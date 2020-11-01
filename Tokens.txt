@@ -51,6 +51,8 @@ Print:
 
 Identifier :
     ([A-Za-z] | '_') ([A-Za-z0-9] | '_')* ;
+Num : 
+    [0-9]+;
 
 Prefix_single_op : '-' | '--' | '++' | '!';
 Postfix_single_op : '--' | '++';
