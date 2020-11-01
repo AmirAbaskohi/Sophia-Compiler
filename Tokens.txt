@@ -1,0 +1,85 @@
+grammar test;
+
+start :  (Lbrace | Identifier | A | Type| Single_prime)*;
+
+//keywords
+Type :
+    'int' | 'bool' | 'string' ;
+
+Bool_value :
+    'false' | 'true' ;
+
+Class :
+    'class';
+Extend:
+    'extend';
+This :
+    'this';
+Def:
+    'def';
+Func:
+    'func';
+Return:
+    'return';
+If:
+    'if';
+Else:
+    'else';
+For:
+    'for';
+Foreach:
+    'foreach';
+Continue:
+    'continue';
+Break:
+    'break';
+Void:
+    'void';
+List:
+    'list';
+In:
+    'in';
+Null:
+    'null';
+New:
+    'new';
+Print:
+    'print';
+//end of keywords
+
+
+
+Identifier :
+    ([A-Za-z] | '_') ([A-Za-z0-9] | '_')* ;
+
+Prefix_single_op : '-' | '--' | '++' | '!';
+Postfix_single_op : '--' | '++';
+Double_op : '+' | '-' | '*' | '/' | '%' | '||' | '&&' | '==' | '!=' | '<' | '>';
+
+Lbrace : '{';
+Rbrace : '}';
+
+Lbracket : '[';
+Rbracket : ']';
+
+Lparenthes : '(';
+Rparenthes : ')';
+
+Lsign : '<'; // esmeshun ro nmidunstam chi bzarm ***********
+Rsign : '>'; // esmeshun ro nmidunstam chi bzarm ***********
+
+Colon : ':';
+Sharp : '#';
+Delim: ';';
+Dot: '.';
+Comma: ',';
+Single_prime: '\'';
+
+Comment_sign: '//';
+
+Func_point : '->'; // esmeshun ro nmidunstam chi bzarm ***********
+
+A: '//';
+
+WS :
+    [ \t\r\n]+ -> skip;
