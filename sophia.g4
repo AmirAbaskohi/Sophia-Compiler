@@ -66,7 +66,7 @@ forCondition
     ;
 
 foreachCondition
-    : IDENTIFIER IN IDENTIFIER
+    : IDENTIFIER IN (boolExp | calcExp)
     ;
 
 loopBody
@@ -78,7 +78,7 @@ loopBody
     ;
 
 block
-    : LPARANTHES variable* (statement | loop | decision | block)* RPARANTHES
+    : LBRACE (statement | loop | decision | block)* RBRACE
     ;
 
 argument
