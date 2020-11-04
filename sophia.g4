@@ -91,9 +91,8 @@ variable
     ;
 
 statement
-    : assignStatement
-    | BREAK
-    | CONTINUE
+    : BREAK DELIM
+    | CONTINUE DELIM
     | returnStatement
     ;
 
@@ -144,8 +143,7 @@ differentTypeListWithoutKey
     ;
 
 number
-    : NEGATIVE_NUMBER
-    | POSITIVE_NUMBER
+    : NUMBER
     | ZERO
     ;
 
@@ -184,23 +182,15 @@ returnStatement
     | RETURN number DELIM
     | RETURN TRUE DELIM
     | RETURN FALSE DELIM
-    | RETURN boolExp
-    | RETURN calcExp
-    ;
-
-IDENTIFIER:
-    ([A-Za-z] | '_') ([A-Za-z0-9] | '_')*
+    | RETURN boolExp DELIM
+    | RETURN calcExp DELIM
     ;
 
 ZERO
     : '0'
     ;
 
-NEGATIVE_NUMBER
-    : '-' POSITIVE_NUMBER
-    ;
-
-POSITIVE_NUMBER
+NUMBER
     : [1-9] [0-9]*
     ;
 
@@ -292,6 +282,10 @@ FOR:
 
 FOREACH:
     'foreach' {System.out.println("Loop:foreach");}
+    ;
+
+IDENTIFIER:
+    ([A-Za-z] | '_') ([A-Za-z0-9] | '_')*
     ;
 
 LBRACE:
