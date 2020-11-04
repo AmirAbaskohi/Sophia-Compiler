@@ -94,6 +94,7 @@ statement
     : BREAK DELIM
     | CONTINUE DELIM
     | returnStatement
+    | printFunction
     ;
 
 type
@@ -174,6 +175,10 @@ decisionBody
     | loop
     | decision
     | block
+    ;
+
+printFunction
+    : PRINTFUNC LPARANTHES (boolExp | calcExp) RPARANTHES
     ;
 
 returnStatement
@@ -276,52 +281,64 @@ LIST
     : 'list'
     ;
 
-FOR:
-    'for' {System.out.println("Loop:for");}
+FOR
+    :'for' {System.out.println("Loop:for");}
     ;
 
-FOREACH:
-    'foreach' {System.out.println("Loop:foreach");}
+FOREACH
+    :'foreach' {System.out.println("Loop:foreach");}
     ;
 
-IDENTIFIER:
-    ([A-Za-z] | '_') ([A-Za-z0-9] | '_')*
+PRINTFUNC
+    : 'print' {System.out.println("Built-in:print");}
     ;
 
-LBRACE:
-    '{'
+IDENTIFIER
+    :([A-Za-z] | '_') ([A-Za-z0-9] | '_')*
     ;
 
-RBRACE:
-    '}'
+LBRACE
+    :'{'
     ;
 
-LPARANTHES:
-    '('
+RBRACE
+    :'}'
     ;
 
-RPARANTHES:
-    ')'
+LPARANTHES
+    :'('
     ;
 
-LSIGN:
-    '<'
+RPARANTHES
+    :')'
     ;
 
-RSIGN:
-    '>'
+LSIGN
+    :'<'
     ;
 
-DELIM:
-    ';'
+RSIGN
+    :'>'
     ;
 
-COLON:
-    ':'
+DELIM
+    :';'
     ;
 
-COMMA:
-    ','
+COLON
+    :':'
+    ;
+
+COMMA
+    :','
+    ;
+
+STRING_VALUE
+    : '"' ~('"')* '"'
+    ;
+
+COMMENT
+    : '//' ~( '\r' | '\n' )* -> skip
     ;
 
 WS:
