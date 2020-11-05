@@ -62,11 +62,11 @@ foreachLoop
     ;
 
 forCondition
-    : (assignExp | ) DELIM exp DELIM (assignExp | )
+    : (assignExp | ) DELIM (exp|assignExp) DELIM (assignExp | )
     ;
 
 foreachCondition
-    : IDENTIFIER IN exp
+    : IDENTIFIER IN (exp|assignExp)
     ;
 
 loopBody
@@ -98,7 +98,6 @@ statement
     | printFunction DELIM
     | assignExp DELIM
     | {System.out.println("MethodCall");} methodCall DELIM
-    | newObject DELIM
     | DELIM
     ;
 
@@ -149,8 +148,8 @@ differentTypeListWithoutKey
     ;
 
 decision
-    : IF {System.out.println("Conditional:if");} (LPARANTHES exp RPARANTHES decisionBody)
-     (ELSE {System.out.println("Conditional:else");} (LPARANTHES exp RPARANTHES decisionBody) | )
+    : IF {System.out.println("Conditional:if");} (LPARANTHES (exp|assignExp) RPARANTHES decisionBody)
+     (ELSE {System.out.println("Conditional:else");} (decisionBody) | )
     ;
 
 decisionBody
@@ -161,11 +160,11 @@ decisionBody
     ;
 
 printFunction
-    : PRINTFUNC {System.out.println("Built-in:print");} (LPARANTHES exp RPARANTHES)
+    : PRINTFUNC {System.out.println("Built-in:print");} (LPARANTHES (exp|assignExp) RPARANTHES)
     ;
 
 returnStatement
-    : RETURN {System.out.println("Return");} (exp | )
+    : RETURN {System.out.println("Return");} ( exp| assignExp | )
     ;
 
 assignExp :
@@ -191,7 +190,7 @@ exp9 :
 
 exp8 :
     (expVar | paranthesBlock | exp7)
-    (txt = OP8 (expVar | paranthesBlock | exp7) {System.out.println("Operator:"+$txt.text);})*
+    (txt = (RSIGN | LSIGN) (expVar | paranthesBlock | exp7) {System.out.println("Operator:"+$txt.text);})*
     ;
 
 exp7 :
@@ -238,7 +237,12 @@ listPart : LBRACKET (exp (COMMA exp)* | ) RBRACKET;
 
 expVar : number | IDENTIFIER  | STRING_VALUE |expKeyWords | newObject | listPart;
 
-expKeyWords : BOOL_VALUE | NEW | THIS ;
+expKeyWords : boolValue | NEW | THIS ;
+
+boolValue
+    : TRUE
+    | FALSE
+    ;
 
 number
     : NUMBER
@@ -254,8 +258,6 @@ OP5 : '!';
 OP6 : '%' | '/' | '*';
 
 OP7 : '+';
-
-OP8 : RSIGN | LSIGN ;
 
 OP9 : '==' | '!=' ;
 
@@ -431,10 +433,6 @@ ASSIGN
 
 STRING_VALUE
     : '"' ~('"')* '"'
-    ;
-
-BOOL_VALUE
-    : TRUE | FALSE
     ;
 
 COMMENT
