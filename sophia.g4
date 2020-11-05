@@ -97,7 +97,7 @@ statement
     | returnStatement DELIM
     | printFunction DELIM
     | assignExp DELIM
-    | methodCall DELIM {System.out.println("MethodCall");}
+    | {System.out.println("MethodCall");} methodCall DELIM
     | newObject DELIM
     | DELIM
     ;
