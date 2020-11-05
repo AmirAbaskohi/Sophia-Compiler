@@ -42,7 +42,7 @@ constructorBody
     ;
 
 methodDeclaration
-    : DEF returnType id=IDENTIFIER LPARANTHES argument RPARANTHES {System.out.println("MethodDec"+$id.text);}
+    : DEF returnType id=IDENTIFIER LPARANTHES argument RPARANTHES {System.out.println("MethodDec:"+$id.text);}
     ;
 
 methodBody
@@ -62,11 +62,11 @@ foreachLoop
     ;
 
 forCondition
-    : (assignStatement | ) DELIM (boolExp | calcExp | ) DELIM (assignStatement | )
+    : (assignExp | ) DELIM exp DELIM (assignExp | )
     ;
 
 foreachCondition
-    : IDENTIFIER IN (boolExp | calcExp)
+    : IDENTIFIER IN exp
     ;
 
 loopBody
@@ -84,6 +84,7 @@ block
 argument
     : IDENTIFIER COLON type
     | IDENTIFIER COLON type COMMA argument
+    |
     ;
 
 variable
@@ -93,8 +94,13 @@ variable
 statement
     : BREAK DELIM
     | CONTINUE DELIM
-    | returnStatement
-    | printFunction
+    | returnStatement DELIM
+    | printFunction DELIM
+    | assignExp DELIM
+    | methodCall DELIM {System.out.println("MethodCall");}
+    | newObject DELIM
+    | exp3 DELIM
+    | DELIM
     ;
 
 type
@@ -143,31 +149,9 @@ differentTypeListWithoutKey
     | type COMMA type
     ;
 
-number
-    : NUMBER
-    | ZERO
-    ;
-
-calcExp
-    :
-    ;
-
-boolExp
-    :
-    ;
-
-assignStatement
-    :
-    ;
-
 decision
-    : IF LPARANTHES decisionCond RPARANTHES decisionBody
-     (ELSE LPARANTHES decisionCond RPARANTHES decisionBody | )
-    ;
-
-decisionCond
-    : boolExp
-    | calcExp
+    : IF LPARANTHES exp RPARANTHES decisionBody
+     (ELSE LPARANTHES exp RPARANTHES decisionBody | )
     ;
 
 decisionBody
@@ -178,18 +162,106 @@ decisionBody
     ;
 
 printFunction
-    : PRINTFUNC LPARANTHES (boolExp | calcExp) RPARANTHES
+    : PRINTFUNC {System.out.println("Built-in:print");} (LPARANTHES exp RPARANTHES)
     ;
 
 returnStatement
-    : RETURN DELIM
-    | RETURN IDENTIFIER DELIM
-    | RETURN number DELIM
-    | RETURN TRUE DELIM
-    | RETURN FALSE DELIM
-    | RETURN boolExp DELIM
-    | RETURN calcExp DELIM
+    : RETURN
+    | RETURN exp
     ;
+
+assignExp :
+    exp (txt = ASSIGN exp {System.out.println("Operator:"+$txt.text);})+
+    ;
+
+exp : exp1 | exp2 | exp3 | exp4 | exp5 | exp6 | exp7 | exp8 | exp9 | exp10 | exp11 ;
+
+exp11 :
+    (expVar | paranthesBlock | exp10)
+    (txt = OP11 (expVar | paranthesBlock | exp10) {System.out.println("Operator:"+$txt.text);})*
+    ;
+
+exp10 :
+    (expVar | paranthesBlock | exp9)
+    (txt = OP10 (expVar | paranthesBlock | exp9) {System.out.println("Operator:"+$txt.text);})*
+    ;
+
+exp9 :
+    (expVar | paranthesBlock | exp8)
+    (txt = OP9 (expVar | paranthesBlock | exp8) {System.out.println("Operator:"+$txt.text);})*
+    ;
+
+exp8 :
+    (expVar | paranthesBlock | exp7)
+    (txt = OP8 (expVar | paranthesBlock | exp7) {System.out.println("Operator:"+$txt.text);})*
+    ;
+
+exp7 :
+    (expVar | paranthesBlock | exp6)
+    (txt = (OP7 | OP3) (expVar | paranthesBlock | exp6) {System.out.println("Operator:"+$txt.text);})*
+    ;
+
+exp6 :
+    (expVar | paranthesBlock | exp5)
+    (txt = OP6 (expVar | paranthesBlock | exp5) {System.out.println("Operator:"+$txt.text);})*
+    ;
+
+exp5 :
+    txt = (OP5 | OP4 | OP3) (expVar | paranthesBlock | exp4) {System.out.println("Operator:"+$txt.text);}
+    | (expVar | paranthesBlock | exp4)
+    ;
+
+exp4 :
+    (expVar | paranthesBlock | exp3) txt = OP4 {System.out.println("Operator:"+$txt.text);}
+    | (expVar | paranthesBlock | exp3)
+    ;
+
+exp3 :
+    (expVar | paranthesBlock) (exp2 | exp1)+ | (expVar | paranthesBlock)
+    ;
+
+exp2 :
+    LBRACKET exp RBRACKET
+    ;
+
+exp1 :
+    DOT IDENTIFIER
+    ;
+
+paranthesBlock : LPARANTHES exp RPARANTHES | LPARANTHES assignExp RPARANTHES ;
+
+methodCall : IDENTIFIER argumentPart+ ;
+
+newObject : NEW IDENTIFIER argumentPart ;
+
+argumentPart : LPARANTHES (exp (COMMA exp)* | ) RPARANTHES ;
+
+expVar : number | IDENTIFIER  | STRING_VALUE |expKeyWords | methodCall | newObject;
+
+expKeyWords : BOOL_VALUE | NEW | THIS ;
+
+number
+    : NUMBER
+    | ZERO
+    ;
+
+OP3 : '-';
+
+OP4 : '++' | '--';
+
+OP5 : '!';
+
+OP6 : '%' | '/' | '*';
+
+OP7 : '+';
+
+OP8 : RSIGN | LSIGN ;
+
+OP9 : '==' | '!=' ;
+
+OP10 : '&&';
+
+OP11 : '||';
 
 ZERO
     : '0'
@@ -209,6 +281,14 @@ EXTENDS
 
 DEF
     : 'def'
+    ;
+
+NEW
+    : 'new'
+    ;
+
+THIS
+    : 'this'
     ;
 
 FUNC
@@ -247,6 +327,10 @@ ARROW
     : '->'
     ;
 
+DOT
+    : '.'
+    ;
+
 BREAK
     : 'break' DELIM {System.out.println("Control:break");}
     ;
@@ -270,7 +354,7 @@ STRING
     ;
 
 BOOLEAN
-    : 'boolean'
+    : 'bool'
     ;
 
 VOID
@@ -290,7 +374,7 @@ FOREACH
     ;
 
 PRINTFUNC
-    : 'print' {System.out.println("Built-in:print");}
+    : 'print'
     ;
 
 IDENTIFIER
@@ -313,6 +397,14 @@ RPARANTHES
     :')'
     ;
 
+LBRACKET
+    :'['
+    ;
+
+RBRACKET
+    :']'
+    ;
+
 LSIGN
     :'<'
     ;
@@ -333,8 +425,16 @@ COMMA
     :','
     ;
 
+ASSIGN
+    :'='
+    ;
+
 STRING_VALUE
     : '"' ~('"')* '"'
+    ;
+
+BOOL_VALUE
+    : TRUE | FALSE
     ;
 
 COMMENT
