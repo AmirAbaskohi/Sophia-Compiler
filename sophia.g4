@@ -99,7 +99,6 @@ statement
     | assignExp DELIM
     | methodCall DELIM {System.out.println("MethodCall");}
     | newObject DELIM
-    | exp3 DELIM
     | DELIM
     ;
 
