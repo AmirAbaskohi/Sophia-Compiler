@@ -54,11 +54,11 @@ loop
     ;
 
 forLoop
-    : FOR LPARANTHES forCondition RPARANTHES loopBody
+    : FOR {System.out.println("Loop:for");} (LPARANTHES forCondition RPARANTHES loopBody)
     ;
 
 foreachLoop
-    : FOREACH LPARANTHES foreachCondition RPARANTHES loopBody
+    : FOREACH {System.out.println("Loop:foreach");} (LPARANTHES foreachCondition RPARANTHES loopBody)
     ;
 
 forCondition
@@ -92,8 +92,8 @@ variable
     ;
 
 statement
-    : BREAK DELIM
-    | CONTINUE DELIM
+    : BREAK DELIM  {System.out.println("Control:break");}
+    | CONTINUE DELIM {System.out.println("Control:continue");}
     | returnStatement DELIM
     | printFunction DELIM
     | assignExp DELIM
@@ -149,8 +149,8 @@ differentTypeListWithoutKey
     ;
 
 decision
-    : IF LPARANTHES exp RPARANTHES decisionBody
-     (ELSE LPARANTHES exp RPARANTHES decisionBody | )
+    : IF {System.out.println("Conditional:if");} (LPARANTHES exp RPARANTHES decisionBody)
+     (ELSE {System.out.println("Conditional:else");} (LPARANTHES exp RPARANTHES decisionBody) | )
     ;
 
 decisionBody
@@ -165,8 +165,7 @@ printFunction
     ;
 
 returnStatement
-    : RETURN
-    | RETURN exp
+    : RETURN {System.out.println("Return");} (exp | )
     ;
 
 assignExp :
@@ -301,15 +300,15 @@ IN
     ;
 
 IF
-    : 'if' {System.out.println("Conditional:if");}
+    : 'if'
     ;
 
 ELSE
-    : 'else' {System.out.println("Conditional:else");}
+    : 'else'
     ;
 
 RETURN
-    : 'return' {System.out.println("Return");}
+    : 'return'
     ;
 
 TRUE
@@ -333,11 +332,11 @@ DOT
     ;
 
 BREAK
-    : 'break' {System.out.println("Control:break");}
+    : 'break'
     ;
 
 CONTINUE
-    : 'continue' {System.out.println("Control:continue");}
+    : 'continue'
     ;
 
 PRIMITIVE_TYPE
@@ -367,11 +366,11 @@ LIST
     ;
 
 FOR
-    :'for' {System.out.println("Loop:for");}
+    :'for'
     ;
 
 FOREACH
-    :'foreach' {System.out.println("Loop:foreach");}
+    :'foreach'
     ;
 
 PRINTFUNC
