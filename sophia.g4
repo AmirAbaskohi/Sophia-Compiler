@@ -126,7 +126,7 @@ returnType
     ;
 
 listType
-    : LIST LPARANTHES listDefinition RPARANTHES
+    : LIST LPARANTHES (listDefinition | ) RPARANTHES
     ;
 
 listDefinition
@@ -146,7 +146,7 @@ differentTypeListWithKey
 
 differentTypeListWithoutKey
     : type
-    | type COMMA type
+    | type COMMA differentTypeListWithoutKey
     ;
 
 decision
@@ -217,7 +217,7 @@ exp4 :
     ;
 
 exp3 :
-    (expVar | paranthesBlock) (exp2 | exp1)+ | (expVar | paranthesBlock)
+    (expVar | paranthesBlock | methodCall) (exp2 | exp1)+ | (expVar | paranthesBlock | methodCall)
     ;
 
 exp2 :
@@ -230,13 +230,15 @@ exp1 :
 
 paranthesBlock : LPARANTHES exp RPARANTHES | LPARANTHES assignExp RPARANTHES ;
 
-methodCall : IDENTIFIER argumentPart+ ;
+methodCall : (expVar | paranthesBlock) (exp2 | exp1 | argumentPart)* argumentPart ;
 
 newObject : NEW IDENTIFIER argumentPart ;
 
 argumentPart : LPARANTHES (exp (COMMA exp)* | ) RPARANTHES ;
 
-expVar : number | IDENTIFIER  | STRING_VALUE |expKeyWords | methodCall | newObject;
+listPart : LBRACKET (exp (COMMA exp)* | ) RBRACKET;
+
+expVar : number | IDENTIFIER  | STRING_VALUE |expKeyWords | newObject | listPart;
 
 expKeyWords : BOOL_VALUE | NEW | THIS ;
 
@@ -332,11 +334,11 @@ DOT
     ;
 
 BREAK
-    : 'break' DELIM {System.out.println("Control:break");}
+    : 'break' {System.out.println("Control:break");}
     ;
 
 CONTINUE
-    : 'continue' DELIM {System.out.println("Control:continue");}
+    : 'continue' {System.out.println("Control:continue");}
     ;
 
 PRIMITIVE_TYPE
