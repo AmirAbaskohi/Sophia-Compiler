@@ -1,0 +1,7 @@
+Line:15:Redefinition of field age
+Line:30:Redefinition of local variable i
+Line:36:Redefinition of method updateSid
+Line:50:Name of method credits conflicts with a field's name
+Line:56:Redefinition of field name
+Line:60:Redefinition of method Person
+Line:63:Redefinition of method showName
