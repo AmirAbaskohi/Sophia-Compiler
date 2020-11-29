@@ -178,85 +178,111 @@ public class ASTTreePrinter extends Visitor<Void> {
 
     @Override
     public Void visit(ForStmt forStmt) {
-        //Todo
+        System.out.println("Line:"+Integer.toString(forStmt.getLine())+":"+forStmt.toString());
+        forStmt.getInitialize().accept(this);
+        forStmt.getCondition().accept(this);
+        forStmt.getUpdate().accept(this);
+        Statement statement = forStmt.getBody();
+        if(statement != null)
+            statement.accept(this);
         return null;
     }
 
     @Override
     public Void visit(BinaryExpression binaryExpression) {
-        //Todo
+        System.out.println("Line:"+Integer.toString(binaryExpression.getLine())+":"+binaryExpression.toString());
+        binaryExpression.getFirstOperand().accept(this);
+        binaryExpression.getSecondOperand().accept(this);
         return null;
     }
 
     @Override
     public Void visit(UnaryExpression unaryExpression) {
-        //Todo
+        System.out.println("Line:"+Integer.toString(unaryExpression.getLine())+":"+unaryExpression.toString());
+        unaryExpression.getOperand().accept(this);
         return null;
     }
 
     @Override
     public Void visit(ObjectOrListMemberAccess objectOrListMemberAccess) {
-        //Todo
+        System.out.println("Line:"+Integer.toString(objectOrListMemberAccess.getLine())+":"+objectOrListMemberAccess.toString());
+        objectOrListMemberAccess.getInstance().accept(this);
+        objectOrListMemberAccess.getMemberName().accept(this);
         return null;
     }
 
     @Override
     public Void visit(Identifier identifier) {
-        //Todo
+        System.out.println("Line:"+Integer.toString(identifier.getLine())+":"+identifier.toString());
         return null;
     }
 
     @Override
     public Void visit(ListAccessByIndex listAccessByIndex) {
-        //Todo
+        System.out.println("Line:"+Integer.toString(listAccessByIndex.getLine())+":"+listAccessByIndex.toString());
+        listAccessByIndex.getInstance().accept(this);
+        listAccessByIndex.getIndex().accept(this);
         return null;
     }
 
     @Override
     public Void visit(MethodCall methodCall) {
-        //Todo
+        System.out.println("Line:"+Integer.toString(methodCall.getLine())+":"+methodCall.toString());
+        methodCall.getInstance().accept(this);
+        for(Expression expression : methodCall.getArgs())
+        {
+            expression.accept(this);
+        }
         return null;
     }
 
     @Override
     public Void visit(NewClassInstance newClassInstance) {
-        //Todo
+        System.out.println("Line:"+Integer.toString(newClassInstance.getLine())+":"+newClassInstance.toString());
+        for(Expression expression : newClassInstance.getArgs())
+        {
+            expression.accept(this);
+        }
         return null;
     }
 
     @Override
     public Void visit(ThisClass thisClass) {
-        //Todo
+        System.out.println("Line:"+Integer.toString(thisClass.getLine())+":"+thisClass.toString());
         return null;
     }
 
     @Override
     public Void visit(ListValue listValue) {
-        //Todo
+        System.out.println("Line:"+Integer.toString(listValue.getLine())+":"+listValue.toString());
+        for(Expression expression : listValue.getElements())
+        {
+            expression.accept(this);
+        }
         return null;
     }
 
     @Override
     public Void visit(NullValue nullValue) {
-        //Todo
+        System.out.println("Line:"+Integer.toString(nullValue.getLine())+":"+nullValue.toString());
         return null;
     }
 
     @Override
     public Void visit(IntValue intValue) {
-        //Todo
+        System.out.println("Line:"+Integer.toString(intValue.getLine())+":"+intValue.toString());
         return null;
     }
 
     @Override
     public Void visit(BoolValue boolValue) {
-        //Todo
+        System.out.println("Line:"+Integer.toString(boolValue.getLine())+":"+boolValue.toString());
         return null;
     }
 
     @Override
     public Void visit(StringValue stringValue) {
-        //Todo
+        System.out.println("Line:"+Integer.toString(stringValue.getLine())+":"+stringValue.toString());
         return null;
     }
 
