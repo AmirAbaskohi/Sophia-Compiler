@@ -22,91 +22,157 @@ public class ASTTreePrinter extends Visitor<Void> {
 
     @Override
     public Void visit(Program program) {
-        //Todo
+        System.out.println("Line:"+Integer.toString(program.getLine())+":"+program.toString());
+        for(ClassDeclaration classInProgram : program.getClasses())
+        {
+            classInProgram.accept(this);
+        }
         return null;
     }
 
     @Override
     public Void visit(ClassDeclaration classDeclaration) {
-        //Todo
+        System.out.println("Line:"+Integer.toString(classDeclaration.getLine())+":"+classDeclaration.toString());
+        classDeclaration.getClassName().accept(this);
+        Identifier parentIdentifier = classDeclaration.getParentClassName();
+        if(parentIdentifier != null)
+            classDeclaration.getParentClassName().accept(this);
+        for(FieldDeclaration filed : classDeclaration.getFields())
+        {
+            filed.accept(this);
+        }
+        ConstructorDeclaration constructor = classDeclaration.getConstructor();
+        if(constructor != null)
+            constructor.accept(this);
+        for(MethodDeclaration method : classDeclaration.getMethods())
+        {
+            method.accept(this);
+        }
         return null;
     }
 
     @Override
     public Void visit(ConstructorDeclaration constructorDeclaration) {
-        //Todo
+        System.out.println("Line:"+Integer.toString(constructorDeclaration.getLine())+":"+constructorDeclaration.toString());
+        constructorDeclaration.getMethodName().accept(this);
+        for(VarDeclaration argument : constructorDeclaration.getArgs())
+        {
+            argument.accept(this);
+        }
+        for(VarDeclaration localVar : constructorDeclaration.getLocalVars())
+        {
+            localVar.accept(this);
+        }
+        for(Statement statement : constructorDeclaration.getBody())
+        {
+            statement.accept(this);
+        }
         return null;
     }
 
     @Override
     public Void visit(MethodDeclaration methodDeclaration) {
-        //Todo
+        System.out.println("Line:"+Integer.toString(methodDeclaration.getLine())+":"+methodDeclaration.toString());
+        methodDeclaration.getMethodName().accept(this);
+        for(VarDeclaration argument : methodDeclaration.getArgs())
+        {
+            argument.accept(this);
+        }
+        for(VarDeclaration localVar : methodDeclaration.getLocalVars())
+        {
+            localVar.accept(this);
+        }
+        for(Statement statement : methodDeclaration.getBody())
+        {
+            statement.accept(this);
+        }
         return null;
     }
 
     @Override
     public Void visit(FieldDeclaration fieldDeclaration) {
-        //Todo
+        System.out.println("Line:"+Integer.toString(fieldDeclaration.getLine())+":"+fieldDeclaration.toString());
+        fieldDeclaration.getVarDeclaration().accept(this);
         return null;
     }
 
     @Override
     public Void visit(VarDeclaration varDeclaration) {
-        //Todo
+        System.out.println("Line:"+Integer.toString(varDeclaration.getLine())+":"+varDeclaration.toString());
+        varDeclaration.getVarName().accept(this);
         return null;
     }
 
     @Override
     public Void visit(AssignmentStmt assignmentStmt) {
-        //Todo
+        System.out.println("Line:"+Integer.toString(assignmentStmt.getLine())+":"+assignmentStmt.toString());
+        assignmentStmt.getlValue().accept(this);
+        assignmentStmt.getrValue().accept(this);
         return null;
     }
 
     @Override
     public Void visit(BlockStmt blockStmt) {
-        //Todo
+        System.out.println("Line:"+Integer.toString(blockStmt.getLine())+":"+blockStmt.toString());
+        for(Statement statement : blockStmt.getStatements())
+        {
+            statement.accept(this);
+        }
         return null;
     }
 
     @Override
     public Void visit(ConditionalStmt conditionalStmt) {
-        //Todo
+        System.out.println("Line:"+Integer.toString(conditionalStmt.getLine())+":"+conditionalStmt.toString());
+        conditionalStmt.getCondition().accept(this);
+        conditionalStmt.getThenBody().accept(this);
+        Statement elseStatement = conditionalStmt.getElseBody();
+        if(elseStatement != null)
+            elseStatement.accept(this);
         return null;
     }
 
     @Override
     public Void visit(MethodCallStmt methodCallStmt) {
-        //Todo
+        System.out.println("Line:"+Integer.toString(methodCallStmt.getLine())+":"+methodCallStmt.toString());
+        methodCallStmt.getMethodCall().accept(this);
         return null;
     }
 
     @Override
     public Void visit(PrintStmt print) {
-        //Todo
+        System.out.println("Line:"+Integer.toString(print.getLine())+":"+print.toString());
+        print.getArg().accept(this);
         return null;
     }
 
     @Override
     public Void visit(ReturnStmt returnStmt) {
-        //Todo
+        System.out.println("Line:"+Integer.toString(returnStmt.getLine())+":"+returnStmt.toString());
+        returnStmt.getReturnedExpr().accept(this);
         return null;
     }
 
     @Override
     public Void visit(BreakStmt breakStmt) {
-        //Todo
+        System.out.println("Line:"+Integer.toString(breakStmt.getLine())+":"+breakStmt.toString());
         return null;
     }
 
     @Override
     public Void visit(ContinueStmt continueStmt) {
-        //Todo
+        System.out.println("Line:"+Integer.toString(continueStmt.getLine())+":"+continueStmt.toString());
         return null;
     }
 
     @Override
     public Void visit(ForeachStmt foreachStmt) {
-        //Todo
+        System.out.println("Line:"+Integer.toString(foreachStmt.getLine())+":"+foreachStmt.toString());
+        foreachStmt.getVariable().accept(this);
+        foreachStmt.getList().accept(this);
+        Statement statement = foreachStmt.getBody();
+        if(statement != null)
+            statement.accept(this);
         return null;
     }
 
