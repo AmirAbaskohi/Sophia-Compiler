@@ -12,7 +12,7 @@ class Person {
 }
 
 class Student extends Person {
-  age: int;
+  age2: int;
   sid: string;
   courses: list(10 # Course);
   def Student(name: String, age: int, sid: string) {
@@ -27,13 +27,13 @@ class Student extends Person {
   	i: int;
     sum: int;
     current: Course;
-    i: int;
+    i2: int;
     for (i = 0; i < 10; i = i + 1) {
       current = this.courses[i];
       sum = sum + current.credits;
     }
   }
-  def void updateSid(sid: int) {
+  def void updateSid2(sid: int) {
     this.sid = sid;
   }
 }
@@ -47,20 +47,20 @@ class Course {
     this.cid = cid;
     this.name = name;
   }
-  def void credits(credits: int) {
+  def void credits2(credits: int) {
     this.credits = credits;
   }
 }
 
 class Junior extends Student {
-  name: string;
+  name3: string;
   def Junior(name: string) {
     this.name = name;
   }
-  def void Person(name: string) {
+  def void Person2(name: string) {
     this.name = name;
   }
-  def string showName() {
+  def string showName2() {
     return this.name;
   }
 }
