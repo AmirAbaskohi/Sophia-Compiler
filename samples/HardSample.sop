@@ -1,0 +1,101 @@
+class A extends B {
+    a:int;
+    a:string;
+    def void a() {
+    }
+    def void a() {
+    }
+}
+
+class B extends C {
+    a:int;
+    a:string;
+    def void a() {
+    }
+    def void a() {
+    }
+}
+
+class C extends B {
+    a:int;
+    a:string;
+    def void a() {
+    }
+    def void a() {
+    }
+}
+
+class Z {
+    n:int;
+    def void k() {
+    }
+    def int p() {
+    }
+}
+
+class Y extends Z {
+    m:int;
+    m:string;
+    def void m() {
+    }
+    def void m() {
+    }
+
+}
+
+class X extends Y {
+    m:int;
+    m:string;
+    n:int;
+    k:int;
+    def void m() {
+    }
+    def void m() {
+    }
+    def int p(m:int, g:int, g:string, t:int) {
+        m:int;
+        g:int;
+        t:string;
+        k:int;
+    }
+}
+
+class W {
+    a:int;
+    def void o1() {
+    }
+}
+
+class W {
+    b:int;
+    a:int;
+    def void o2() {
+    }
+    def void o1() {
+    }
+}
+
+class W {
+    c:int;
+    def void o3() {
+    }
+}
+
+class Y extends W {
+    a:int;
+    b:int;
+    c:int;
+    def void o1() {
+    }
+    def void o2() {
+    }
+    def void o3() {
+    }
+}
+
+
+class Main {
+    def Main() {
+
+    }
+}

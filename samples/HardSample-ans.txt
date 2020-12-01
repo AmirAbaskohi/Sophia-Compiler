@@ -1,0 +1,42 @@
+Line:2:Redefinition of field a
+Line:3:Redefinition of field a
+Line:4:Redefinition of method a
+Line:4:Name of method a conflicts with a field's name
+Line:6:Redefinition of method a
+Line:6:Name of method a conflicts with a field's name
+Line:10:Class B is in an inheritance cycle
+Line:11:Redefinition of field a
+Line:12:Redefinition of field a
+Line:13:Redefinition of method a
+Line:13:Name of method a conflicts with a field's name
+Line:15:Redefinition of method a
+Line:15:Name of method a conflicts with a field's name
+Line:19:Class C is in an inheritance cycle
+Line:20:Redefinition of field a
+Line:21:Redefinition of field a
+Line:22:Redefinition of method a
+Line:22:Name of method a conflicts with a field's name
+Line:24:Redefinition of method a
+Line:24:Name of method a conflicts with a field's name
+Line:30:Name of method k conflicts with a field's name
+Line:38:Redefinition of field m
+Line:39:Name of method m conflicts with a field's name
+Line:41:Redefinition of method m
+Line:41:Name of method m conflicts with a field's name
+Line:47:Redefinition of field m
+Line:48:Redefinition of field m
+Line:49:Redefinition of field n
+Line:51:Redefinition of method m
+Line:51:Name of method m conflicts with a field's name
+Line:53:Redefinition of method m
+Line:53:Name of method m conflicts with a field's name
+Line:55:Redefinition of method p
+Line:55:Redefinition of local variable g
+Line:56:Redefinition of local variable m
+Line:57:Redefinition of local variable g
+Line:58:Redefinition of local variable t
+Line:69:Redefinition of class W
+Line:78:Redefinition of class W
+Line:84:Redefinition of class Y
+Line:85:Redefinition of field a
+Line:88:Redefinition of method o1

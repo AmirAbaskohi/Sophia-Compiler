@@ -37,9 +37,9 @@ public class ASTTreePrinter extends Visitor<Void> {
         Identifier parentIdentifier = classDeclaration.getParentClassName();
         if(parentIdentifier != null)
             classDeclaration.getParentClassName().accept(this);
-        for(FieldDeclaration filed : classDeclaration.getFields())
+        for(FieldDeclaration field : classDeclaration.getFields())
         {
-            filed.accept(this);
+            field.accept(this);
         }
         ConstructorDeclaration constructor = classDeclaration.getConstructor();
         if(constructor != null)
