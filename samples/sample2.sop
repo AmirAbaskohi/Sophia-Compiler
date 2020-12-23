@@ -1,79 +1,45 @@
-class Person {
-  name: string;
-  age: int;
-  def Person(name: string, age: int) {
-    this.name = name;
-    this.age = age;
-  }
-  def void showName() {
-    print(this.name);
-    print("\n");
-  }
-}
+class A extends L {
+    a:int;
+    b:func<list(0 # int), bool->void>;
 
-class Student extends Person {
-  age2: int;
-  sid: string;
-  courses: list(10 # Course);
-  def Student(name: String, age: int, sid: string) {
-    this.name = name;
-    this.age = age;
-    this.sid = sid;
-  }
-  def void updateSid(sid: string) {
-    this.sid = sid;
-  }
-  def int getTotalCredits() {
-  	i: int;
-    sum: int;
-    current: Course;
-    i2: int;
-    for (i = 0; i < 10; i = i + 1) {
-      current = this.courses[i];
-      sum = sum + current.credits;
+    def A2(m:list(int, list(a:int, a:bool)), r:string) {
+        t: int;
+        b: bool;
+        f: func<void->string>;
+
+        a = this.a.b + a - r * m[1].a;
+        print(m + this.a);
+        this.foo.a = 2;
+        t = (this.foo())++;
+        return;
+        print("Unreachable statements 1");
+        this.bar() = t - this;
+        for(t = 0 = 1; t % 2; t = !(t--)) {
+            if(b && !b) {
+                break;
+            }
+            else {
+                continue;
+            }
+            print("Unreachable statement 2");
+        }
+        t = new L();
+        f = this.foo;
+        if(f != null) {
+            t = f();
+            t = f.b;
+        }
     }
-  }
-  def void updateSid2(sid: int) {
-    this.sid = sid;
-  }
+
+    def string foo() {
+
+    }
+
+    def void bar(a:int) {
+
+    }
 }
 
-class Course {
-  cid: string;
-  name: string;
-  instructor: Person;
-  credits: int;
-  def Course(cid: string, name: string) {
-    this.cid = cid;
-    this.name = name;
-  }
-  def void credits2(credits: int) {
-    this.credits = credits;
-  }
-}
+class B {
 
-class Junior extends Student {
-  name3: string;
-  def Junior(name: string) {
-    this.name = name;
-  }
-  def void Person2(name: string) {
-    this.name = name;
-  }
-  def string showName2() {
-    return this.name;
-  }
-}
-
-class Main {
-  def Main() {
-    inst: Person;
-    stu: Student;
-    course: Course;
-    inst = new Person("Sophia", 42);
-    inst.showName();
-    stu = new Student("Hannah", 20);
-    stu.showName();
-    course = new Course("810157401", "PLC", inst);
-  }
 }

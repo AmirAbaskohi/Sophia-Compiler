@@ -17,7 +17,7 @@ public class MethodDeclaration extends Declaration {
     protected ArrayList<VarDeclaration> localVars = new ArrayList<>();
     protected ArrayList<Statement> body = new ArrayList<>();
     //don't need this until code generation
-    protected boolean doesReturn;
+    protected boolean doesReturn = false;
 
     //returnType NullType on when it is Void
     public MethodDeclaration(Identifier methodName, Type returnType) {

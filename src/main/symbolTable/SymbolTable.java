@@ -3,11 +3,13 @@ package main.symbolTable;
 
 import main.symbolTable.exceptions.ItemAlreadyExistsException;
 import main.symbolTable.exceptions.ItemNotFoundException;
-import main.symbolTable.items.MethodSymbolTableItem;
 import main.symbolTable.items.SymbolTableItem;
-import main.symbolTable.utils.Stack;
+import main.symbolTable.utils.stack.Stack;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 
 
@@ -66,18 +68,4 @@ public class SymbolTable {
         throw new ItemNotFoundException();
     }
 
-    public ArrayList<MethodSymbolTableItem> getFieldConflictsWithParentMethods(String key){
-        ArrayList<MethodSymbolTableItem> conflicts = new ArrayList<>();
-        Set<SymbolTable> visitedSymbolTables = new HashSet<>();
-        SymbolTable currentSymbolTable = this.pre;
-        while((currentSymbolTable != null) && (!visitedSymbolTables.contains(currentSymbolTable)))
-        {
-            visitedSymbolTables.add( currentSymbolTable );
-            SymbolTableItem symbolTableItem = currentSymbolTable.items.get(key);
-            if( symbolTableItem != null )
-                conflicts.add((MethodSymbolTableItem)symbolTableItem);
-            currentSymbolTable = currentSymbolTable.pre;
-        }
-        return conflicts;
-    }
 }

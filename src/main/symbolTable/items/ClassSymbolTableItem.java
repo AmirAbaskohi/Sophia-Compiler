@@ -4,9 +4,6 @@ package main.symbolTable.items;
 import main.ast.nodes.declaration.classDec.ClassDeclaration;
 import main.symbolTable.SymbolTable;
 
-import java.util.HashSet;
-import java.util.Set;
-
 public class ClassSymbolTableItem extends SymbolTableItem {
     public static final String START_KEY = "Class_";
     private SymbolTable classSymbolTable;
@@ -31,22 +28,6 @@ public class ClassSymbolTableItem extends SymbolTableItem {
 
     public void setClassDeclaration(ClassDeclaration classDeclaration) {
         this.classDeclaration = classDeclaration;
-    }
-
-    public boolean checkInheritanceCycle()
-    {
-        Set<SymbolTable> visitedSymbolTables = new HashSet<>();
-        SymbolTable current = this.classSymbolTable.pre;
-        while(current != null && !visitedSymbolTables.contains(current))
-        {
-            if (current == this.classSymbolTable)
-            {
-                return true;
-            }
-            visitedSymbolTables.add(current);
-            current = current.pre;
-        }
-        return false;
     }
 
     @Override

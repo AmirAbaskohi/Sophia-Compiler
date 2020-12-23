@@ -1,42 +1,60 @@
-class Cart {
-  orders: list(4 # list(name: string, price: int, quantity: int));
-  def void addToCart(product: list(string, int, int), idx: int) {
-    this.orders[idx] = product;
-  }
-  def int getSum() {
-    total: int;
-    current: int;
-    order: list(name: string, price: int, quantity: int);
-    total = 0;
-    foreach (order in this.orders) {
-      if (order.quantity == 0)
-        break;
-      current = order.price * order.quantity + order.quantity * 100 % 1000 - order.price / 100;
-      total = total + current;
+class A extends Main {
+    def A(w:bool) {
+
     }
-    return total;
-  }
 }
 
-class Main{
-  def Main() {
-    cart: Cart;
-    i: int;
-    total: int;
-    order: list(string, int, int);
-    product: list(string, int);
-    productCatalog: list(4 # list(string, int));
-    productCatalog = [["Doughnut", 5000], ["Croissant", 4000],
-                      ["Cookies", 2000],
-                      ["Chocolate Cake", 8000]];
-    cart = new Cart();
-    for (i = 0; i < 4; i = i + 1) {
-      product = productCatalog[i];
-      order = [product[0], product[1], i + 1];
-      cart.addToCart(order, i);
+class B {
+    def R() {
+
     }
-    total = cart.getSum();
-    print(total);
-    print("\n");
-  }
+}
+
+class Main extends B {
+    def Main(a:int) {
+        l1:list(0 # string);
+        l2:list(b:bool, c:string, c:int);
+        l3:list(3 # int);
+        l4:list(int, string, j:bool);
+        d: D;
+        e:string;
+        f: A;
+
+        a();
+        a = l4[1+1];
+        a = this.foo();
+        if(e) {
+            print(l3);
+        }
+        f = new A(1);
+        break;
+        foreach(a in e) {
+
+        }
+        foreach(a in l4) {
+
+        }
+        foreach(e in l3) {
+
+        }
+        a = 2++;
+        2 = a;
+        a = e[1];
+        a = l3[e];
+        a = l4.m;
+        a = e.f;
+        a = this.g;
+        this.foo(2);
+        a = a + e;
+        a = g;
+    }
+
+    def void foo() {
+
+    }
+
+    def int bar() {
+        return "hello";
+    }
+
 }
