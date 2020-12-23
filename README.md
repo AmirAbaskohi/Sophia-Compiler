@@ -194,3 +194,8 @@ print("Hello World!");
     * Name Analyzing
     * Printing Some Errors Realted To Name And Scoping
     * Printing AST Tree If There Was No Error
+
+* Phase3:
+    * Type checking
+    * Checking base rules such as `Main` class conditions
+    * Checking accessibilities
