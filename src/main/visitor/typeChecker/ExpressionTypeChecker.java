@@ -18,9 +18,7 @@ import main.ast.types.single.BoolType;
 import main.ast.types.single.ClassType;
 import main.ast.types.single.IntType;
 import main.ast.types.single.StringType;
-import main.compileErrorException.typeErrors.ClassNotDeclared;
-import main.compileErrorException.typeErrors.ConstructorArgsNotMatchDefinition;
-import main.compileErrorException.typeErrors.UnsupportedOperandType;
+import main.compileErrorException.typeErrors.*;
 import main.symbolTable.SymbolTable;
 import main.symbolTable.exceptions.ItemNotFoundException;
 import main.symbolTable.items.ClassSymbolTableItem;
@@ -38,6 +36,58 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         this.classHierarchy = classHierarchy;
     }
     static Identifier className;
+
+    private boolean checkList(ListType a, ListType b)
+    {
+        ArrayList<ListNameType> firstTypes = a.getElementsTypes();
+        ArrayList<ListNameType> secondTypes = b.getElementsTypes();
+        if(firstTypes.size() != secondTypes.size())
+            return false;
+        for(int i = 0 ; i < firstTypes.size() ; i++)
+        {
+            Type first = firstTypes.get(i).getType();
+            Type second = secondTypes.get(i).getType();
+            if(!first.toString().equals(second.toString()))
+                return false;
+            if(first instanceof ListType)
+                if(!checkList((ListType)first, (ListType)second))
+                    return false;
+            if(first instanceof FptrType)
+                if(!checkFunctionPointer((FptrType)first, (FptrType)second))
+                    return false;
+        }
+        return true;
+    }
+
+    private boolean checkFunctionPointer(FptrType a, FptrType b)
+    {
+        ArrayList<Type> firstArgumentTypes = a.getArgumentsTypes();
+        ArrayList<Type> secondArgumentTypes = b.getArgumentsTypes();
+        if(firstArgumentTypes.size() != secondArgumentTypes.size())
+            return false;
+        if(!a.getReturnType().toString().equals(b.getReturnType().toString()))
+            return false;
+        if(a.getReturnType() instanceof ListType)
+            if(!checkList((ListType)a.getReturnType(), (ListType)b.getReturnType()))
+                return false;
+        if(a.getReturnType() instanceof  FptrType)
+            if(!checkFunctionPointer((FptrType) a.getReturnType(), (FptrType) b.getReturnType()))
+                return false;
+        for(int i = 0 ; i < firstArgumentTypes.size() ; i++)
+        {
+            Type first = firstArgumentTypes.get(i);
+            Type second = secondArgumentTypes.get(i);
+            if(!first.toString().equals(second.toString()))
+                return false;
+            if(first instanceof ListType)
+                if(!checkList((ListType)first, (ListType)second))
+                    return false;
+            if(first instanceof FptrType)
+                if(!checkFunctionPointer((FptrType)first, (FptrType)second))
+                    return false;
+        }
+        return true;
+    }
 
     @Override
     public Type visit(BinaryExpression binaryExpression) {
@@ -127,14 +177,88 @@ public class ExpressionTypeChecker extends Visitor<Type> {
 
     @Override
     public Type visit(ListAccessByIndex listAccessByIndex) {
-        //TODO
-        return null;
+        Type instanceType = listAccessByIndex.getInstance().accept(this);
+        Type indexType = listAccessByIndex.getIndex().accept(this);
+        boolean isConstant = listAccessByIndex.getIndex() instanceof IntValue;
+        if(!(instanceType instanceof ListType) || !(indexType instanceof IntType))
+        {
+            if(!(instanceType instanceof ListType))
+                listAccessByIndex.addError(new ListAccessByIndexOnNoneList(listAccessByIndex.getLine()));
+            if(!(indexType instanceof IntType))
+                listAccessByIndex.addError(new ListIndexNotInt(listAccessByIndex.getLine()));
+            return new NoType();
+        }
+        boolean areDifferentType = false;
+        boolean isFirst = true;
+        Type baseType = new NoType();
+        for(ListNameType listNameType : ((ListType)instanceType).getElementsTypes())
+        {
+            Type elementType = listNameType.getType();
+            if(isFirst) {
+                baseType = elementType;
+                isFirst = false;
+            }
+            else {
+                boolean areSame;
+                if(baseType instanceof ListType && elementType instanceof ListType)
+                    areSame = this.checkList(((ListType) elementType), ((ListType) baseType));
+                else if(baseType instanceof FptrType && elementType instanceof FptrType)
+                    areSame = this.checkFunctionPointer(((FptrType) elementType), ((FptrType) baseType));
+                else
+                    areSame = baseType.toString().equals(elementType.toString());
+                if(!areSame)
+                {
+                    areDifferentType = true;
+                    break;
+                }
+            }
+        }
+        if(areDifferentType && !isConstant)
+        {
+            listAccessByIndex.addError(new CantUseExprAsIndexOfMultiTypeList(listAccessByIndex.getLine()));
+            return new NoType();
+        }
+        if(!areDifferentType)
+            return baseType;
+        int index = ((IntValue) listAccessByIndex.getIndex()).getConstant();
+        return ((ListType)instanceType).getElementsTypes().get(index).getType();
     }
 
     @Override
     public Type visit(MethodCall methodCall) {
-        //TODO
-        return null;
+        Type instanceType = methodCall.getInstance().accept(this);
+        ArrayList<Type> types = new ArrayList<>();
+        for(Expression arg : methodCall.getArgs())
+            types.add(arg.accept(this));
+        if(!(instanceType instanceof FptrType)) {
+            methodCall.addError(new CallOnNoneFptrType(methodCall.getLine()));
+            return new NoType();
+        }
+        ArrayList<Type> argTypes = ((FptrType)instanceType).getArgumentsTypes();
+        if(types.size() != argTypes.size())
+        {
+            methodCall.addError(new MethodCallNotMatchDefinition(methodCall.getLine()));
+            return new NoType();
+        }
+        for (int i=0; i<types.size(); i++) {
+            if(types.get(i) instanceof NoType)
+                continue;
+            if (argTypes.get(i) instanceof ClassType && types.get(i) instanceof NullType)
+                continue;
+
+            if (types.get(i) instanceof ClassType && argTypes.get(i) instanceof ClassType){
+                String rArgClassName = ((ClassType) types.get(i)).getClassName().getName();
+                String lArgClassName = ((ClassType) argTypes.get(i)).getClassName().getName();
+                if (classHierarchy.isSecondNodeAncestorOf(rArgClassName, lArgClassName))
+                    continue;
+            }
+
+            if(!argTypes.get(i).toString().equals(types.get(i).toString())) {
+                methodCall.addError(new MethodCallNotMatchDefinition(methodCall.getLine()));
+                return new NoType();
+            }
+        }
+        return ((FptrType) instanceType).getReturnType();
     }
 
     @Override
