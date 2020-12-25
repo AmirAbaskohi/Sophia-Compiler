@@ -37,7 +37,7 @@ public class ExpressionTypeChecker extends Visitor<Type> {
     }
     static Identifier className;
 
-    private boolean checkList(ListType a, ListType b)
+    public boolean checkList(ListType a, ListType b)
     {
         ArrayList<ListNameType> firstTypes = a.getElementsTypes();
         ArrayList<ListNameType> secondTypes = b.getElementsTypes();
@@ -59,7 +59,7 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         return true;
     }
 
-    private boolean checkFunctionPointer(FptrType a, FptrType b)
+    public boolean checkFunctionPointer(FptrType a, FptrType b)
     {
         ArrayList<Type> firstArgumentTypes = a.getArgumentsTypes();
         ArrayList<Type> secondArgumentTypes = b.getArgumentsTypes();
@@ -70,7 +70,7 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         if(a.getReturnType() instanceof ListType)
             if(!checkList((ListType)a.getReturnType(), (ListType)b.getReturnType()))
                 return false;
-        if(a.getReturnType() instanceof  FptrType)
+        if(a.getReturnType() instanceof FptrType)
             if(!checkFunctionPointer((FptrType) a.getReturnType(), (FptrType) b.getReturnType()))
                 return false;
         for(int i = 0 ; i < firstArgumentTypes.size() ; i++)
@@ -88,6 +88,72 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         }
         return true;
     }
+
+    public boolean listHasSameType(ListType inputList)
+    {
+        boolean isFirst = true;
+        Type baseType = new NoType();
+        for(ListNameType listNameType : inputList.getElementsTypes())
+        {
+            Type elementType = listNameType.getType();
+            if (elementType instanceof NoType)
+                continue;
+            if(isFirst) {
+                baseType = elementType;
+                isFirst = false;
+            }
+            else {
+                boolean areSame;
+                if(baseType instanceof ListType && elementType instanceof ListType)
+                    areSame = this.checkList(((ListType) elementType), ((ListType) baseType));
+                else if(baseType instanceof FptrType && elementType instanceof FptrType)
+                    areSame = this.checkFunctionPointer(((FptrType) elementType), ((FptrType) baseType));
+                else
+                    areSame = baseType.toString().equals(elementType.toString());
+                if(!areSame)
+                    return false;
+            }
+        }
+        return true;
+    }
+
+    public Type getListType(ListType inputList)
+    {
+        Type baseType = new NoType();
+        for(ListNameType listNameType : inputList.getElementsTypes())
+        {
+            Type elementType = listNameType.getType();
+            if (elementType instanceof NoType)
+                continue;
+            baseType = elementType;
+            break;
+        }
+        return baseType;
+    }
+
+    public boolean checkTypes(Type from, Type to, boolean isSubAllowed) //valid
+    {
+        if(from instanceof NoType)
+            return true;
+        if ((to instanceof ClassType || to instanceof FptrType ) && from instanceof NullType)
+            return true;
+
+        if ((from instanceof ClassType) && (to instanceof ClassType) && isSubAllowed){
+            String fromClassName = ((ClassType) from).getClassName().getName();
+            String toClassName = ((ClassType) to).getClassName().getName();
+            return classHierarchy.isSecondNodeAncestorOf(fromClassName, toClassName);
+        }
+
+        if (from instanceof ListType && to instanceof ListType)
+            return checkList((ListType) from, (ListType) to);
+
+        if (from instanceof FptrType && to instanceof FptrType)
+            return checkFunctionPointer((FptrType) from, (FptrType) to);
+
+        return to.toString().equals(from.toString());
+    }
+
+
 
     @Override
     public Type visit(BinaryExpression binaryExpression) {
@@ -149,13 +215,13 @@ public class ExpressionTypeChecker extends Visitor<Type> {
 
     @Override
     public Type visit(UnaryExpression unaryExpression) {
-        //TODO
+//TODO
         return null;
     }
 
     @Override
     public Type visit(ObjectOrListMemberAccess objectOrListMemberAccess) {
-        //TODO
+//TODO
         return null;
     }
 
@@ -171,7 +237,7 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         {
 
         }
-        //TODO
+//TODO
         return null;
     }
 
@@ -188,38 +254,22 @@ public class ExpressionTypeChecker extends Visitor<Type> {
                 listAccessByIndex.addError(new ListIndexNotInt(listAccessByIndex.getLine()));
             return new NoType();
         }
-        boolean areDifferentType = false;
-        boolean isFirst = true;
-        Type baseType = new NoType();
-        for(ListNameType listNameType : ((ListType)instanceType).getElementsTypes())
-        {
-            Type elementType = listNameType.getType();
-            if(isFirst) {
-                baseType = elementType;
-                isFirst = false;
-            }
-            else {
-                boolean areSame;
-                if(baseType instanceof ListType && elementType instanceof ListType)
-                    areSame = this.checkList(((ListType) elementType), ((ListType) baseType));
-                else if(baseType instanceof FptrType && elementType instanceof FptrType)
-                    areSame = this.checkFunctionPointer(((FptrType) elementType), ((FptrType) baseType));
-                else
-                    areSame = baseType.toString().equals(elementType.toString());
-                if(!areSame)
-                {
-                    areDifferentType = true;
-                    break;
-                }
-            }
-        }
+
+        boolean areDifferentType = !(listHasSameType((ListType)instanceType));
+        Type listItemType;
+        if(((ListType)instanceType).getElementsTypes().size() > 0)
+            listItemType = ((ListType)instanceType).getElementsTypes().get(0).getType();
+        else
+            listItemType = new NoType();
+
+
         if(areDifferentType && !isConstant)
         {
             listAccessByIndex.addError(new CantUseExprAsIndexOfMultiTypeList(listAccessByIndex.getLine()));
             return new NoType();
         }
         if(!areDifferentType)
-            return baseType;
+            return listItemType;
         int index = ((IntValue) listAccessByIndex.getIndex()).getConstant();
         return ((ListType)instanceType).getElementsTypes().get(index).getType();
     }
