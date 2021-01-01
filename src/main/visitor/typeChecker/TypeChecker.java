@@ -33,6 +33,7 @@ import main.symbolTable.utils.graph.Graph;
 import main.visitor.Visitor;
 
 import java.util.ArrayList;
+import java.util.Stack;
 
 public class TypeChecker extends Visitor<Void> {
     private final Graph<String> classHierarchy;
@@ -40,32 +41,68 @@ public class TypeChecker extends Visitor<Void> {
 
     public boolean isInLoop;
     public Type methodRetType;
+    public boolean hasReturnStmt;
+    public Stack<Boolean> haveBeenPrinted;
+    public Stack<Boolean> haveBeenUnreached;
+
+    static boolean isInMethodCallStmt;
 
     public TypeChecker(Graph<String> classHierarchy) {
         this.classHierarchy = classHierarchy;
         this.expressionTypeChecker = new ExpressionTypeChecker(classHierarchy);
         this.isInLoop = false;
         this.methodRetType = new NoType();
+        this.hasReturnStmt = false;
+        isInMethodCallStmt = false;
+        haveBeenPrinted = new Stack<>();
+        haveBeenUnreached = new Stack<>();
     }
 
     @Override
     public Void visit(Program program) {
+        String key = ClassSymbolTableItem.START_KEY + "Main";
+        try{
+            SymbolTable.root.getItem(key, true);
+        }catch (ItemNotFoundException ex)
+        {
+            program.addError(new NoMainClass());
+        }
 
-        if (classHierarchy.isSecondNodeAncestorOf("NullType", "A"))
-            System.out.println("arash rasouli");
-        //TODO
+        for (ClassDeclaration classDeclaration: program.getClasses()) {
+            classDeclaration.accept(this);
+        }
         return null;
     }
 
     @Override
     public Void visit(ClassDeclaration classDeclaration) {
-        String key = ClassSymbolTableItem.START_KEY + classDeclaration.getClassName().getName();
+        expressionTypeChecker.isLValueViolated = false;
+        expressionTypeChecker.aloneThis = false;
 
-        try{
-            String parentKey = ClassSymbolTableItem.START_KEY + classDeclaration.getParentClassName().getName();
-            SymbolTable.root.getItem(parentKey, true);
-        } catch (ItemNotFoundException exp){
-            classDeclaration.addError(new ClassNotDeclared(classDeclaration.getLine(), classDeclaration.getParentClassName().getName()));
+        int line = classDeclaration.getLine();
+        String className = classDeclaration.getClassName().getName();
+        String parentClassName = "";
+        if (classDeclaration.getParentClassName() != null)
+            parentClassName = classDeclaration.getParentClassName().getName();
+        String key = ClassSymbolTableItem.START_KEY + className;
+
+        if (className.equals("Main")) {
+            if (classDeclaration.getParentClassName() != null)
+                classDeclaration.addError(new MainClassCantExtend(line));
+            if (classDeclaration.getConstructor() == null)
+                classDeclaration.addError(new NoConstructorInMainClass(classDeclaration));
+        }
+        if (parentClassName.equals("Main")) {
+            classDeclaration.addError(new CannotExtendFromMainClass(line));
+        }
+
+        if (classDeclaration.getParentClassName() != null){
+            try{
+                String parentKey = ClassSymbolTableItem.START_KEY + parentClassName;
+                SymbolTable.root.getItem(parentKey, true);
+            } catch (ItemNotFoundException exp){
+                classDeclaration.addError(new ClassNotDeclared(line, parentClassName));
+            }
         }
 
         try {
@@ -93,9 +130,21 @@ public class TypeChecker extends Visitor<Void> {
 
     @Override
     public Void visit(ConstructorDeclaration constructorDeclaration) {
+        haveBeenPrinted.push(false);
+        haveBeenUnreached.push(false);
+        expressionTypeChecker.isLValueViolated = false;
+        expressionTypeChecker.aloneThis = false;
+
+
         String constructorName = constructorDeclaration.getMethodName().getName();
 
-        String key = MethodSymbolTableItem.START_KEY + constructorDeclaration.getMethodName().getName();
+        if (ExpressionTypeChecker.className.getName().equals("Main"))
+        {
+            if (constructorDeclaration.getArgs().size() != 0)
+                constructorDeclaration.addError(new MainConstructorCantHaveArgs(constructorDeclaration.getLine()));
+        }
+
+        String key = MethodSymbolTableItem.START_KEY + constructorName;
         try {
             SymbolTableItem symbolTableItem = SymbolTable.top.getItem(key, true);
             MethodSymbolTableItem methodSymbolTableItem = (MethodSymbolTableItem) symbolTableItem;
@@ -105,8 +154,9 @@ public class TypeChecker extends Visitor<Void> {
             System.out.println("Never happening!");
         }
 
-        if(constructorName.equals(ExpressionTypeChecker.className.getName()))
+        if(!constructorName.equals(ExpressionTypeChecker.className.getName()))
             constructorDeclaration.addError(new ConstructorNotSameNameAsClass(constructorDeclaration.getLine()));
+
         for(VarDeclaration varDeclaration : constructorDeclaration.getArgs())
             varDeclaration.accept(this);
         for(VarDeclaration varDeclaration : constructorDeclaration.getLocalVars())
@@ -114,12 +164,21 @@ public class TypeChecker extends Visitor<Void> {
         for(Statement statement : constructorDeclaration.getBody())
             statement.accept(this);
         SymbolTable.pop();
+
+        haveBeenPrinted.pop();
+        haveBeenUnreached.pop();
+
         return null;
     }
 
     @Override
     public Void visit(MethodDeclaration methodDeclaration) {
-        boolean hasReturnTypeError = false;
+
+        haveBeenPrinted.push(false);
+        haveBeenUnreached.push(false);
+
+        expressionTypeChecker.isLValueViolated = false;
+        expressionTypeChecker.aloneThis = false;
 
         String key = MethodSymbolTableItem.START_KEY + methodDeclaration.getMethodName().getName();
         try {
@@ -136,24 +195,21 @@ public class TypeChecker extends Visitor<Void> {
             ArrayList<CompileErrorException> errors = expressionTypeChecker.checkListDecError((ListType)returnType, methodDeclaration.getLine());
             for(CompileErrorException error : errors) {
                 methodDeclaration.addError(error);
-                hasReturnTypeError = true;
             }
         }
         if(returnType instanceof ClassType){
-            if(expressionTypeChecker.isClassDeclared((ClassType)returnType)) {
+            if(!expressionTypeChecker.isClassDeclared((ClassType)returnType)) {
                 methodDeclaration.addError(new ClassNotDeclared(methodDeclaration.getLine(), ((ClassType) returnType).getClassName().getName()));
-                hasReturnTypeError = true;
             }
         }
         if(returnType instanceof FptrType){
             ArrayList<CompileErrorException> errors = expressionTypeChecker.checkFptrDecError((FptrType) returnType, methodDeclaration.getLine());
             for(CompileErrorException error : errors) {
                 methodDeclaration.addError(error);
-                hasReturnTypeError = true;
             }
         }
 
-        methodRetType = hasReturnTypeError ? new NoType() : methodDeclaration.getReturnType();
+        methodRetType = methodDeclaration.getReturnType();
 
         for(VarDeclaration varDeclaration : methodDeclaration.getArgs())
             varDeclaration.accept(this);
@@ -161,7 +217,17 @@ public class TypeChecker extends Visitor<Void> {
             varDeclaration.accept(this);
         for(Statement statement : methodDeclaration.getBody())
             statement.accept(this);
+
+        if(!(returnType instanceof NullType) && !hasReturnStmt)
+        {
+            methodDeclaration.addError(new MissingReturnStatement(methodDeclaration));
+            hasReturnStmt = false;
+        }
         SymbolTable.pop();
+
+        haveBeenPrinted.pop();
+        haveBeenUnreached.pop();
+
         return null;
     }
 
@@ -181,7 +247,7 @@ public class TypeChecker extends Visitor<Void> {
                 varDeclaration.addError(error);
         }
         if(type instanceof ClassType){
-            if(expressionTypeChecker.isClassDeclared((ClassType)type))
+            if(! expressionTypeChecker.isClassDeclared((ClassType)type))
                 varDeclaration.addError(new ClassNotDeclared(varDeclaration.getLine(), ((ClassType)type).getClassName().getName()));
         }
         if(type instanceof FptrType){
@@ -194,26 +260,41 @@ public class TypeChecker extends Visitor<Void> {
 
     @Override
     public Void visit(AssignmentStmt assignmentStmt) {
-        Type rValue = assignmentStmt.getrValue().accept(expressionTypeChecker);
-        Type lValue = assignmentStmt.getlValue().accept(expressionTypeChecker);
-        if(rValue instanceof NullType && !(assignmentStmt.getrValue() instanceof NullValue)) {
-            assignmentStmt.addError(new CantUseValueOfVoidMethod(assignmentStmt.getLine()));
-            rValue = new NoType();
+        if(!(haveBeenPrinted.peek()) && haveBeenUnreached.peek()){
+            assignmentStmt.addError(new UnreachableStatements(assignmentStmt));
+            haveBeenPrinted.pop();
+            haveBeenPrinted.push(true);
         }
-        if(lValue instanceof NullType && !(assignmentStmt.getlValue() instanceof NullValue)) {
-            assignmentStmt.addError(new CantUseValueOfVoidMethod(assignmentStmt.getLine()));
-            lValue = new NoType();
-        }
-        //TODO
-        if(!expressionTypeChecker.checkTypes(rValue, lValue, true))
+        expressionTypeChecker.isLValueViolated = false;
+        expressionTypeChecker.aloneThis = false;
+
+        Type rType = assignmentStmt.getrValue().accept(expressionTypeChecker);
+        expressionTypeChecker.isLValueViolated = false;
+        expressionTypeChecker.aloneThis = false;
+        Type lType = assignmentStmt.getlValue().accept(expressionTypeChecker);
+
+        if(!expressionTypeChecker.checkTypes(rType, lType, true))
             assignmentStmt.addError(new UnsupportedOperandType(assignmentStmt.getLine(), BinaryOperator.assign.name()));
-        if(expressionTypeChecker.isValidLValueForAssignment(assignmentStmt.getlValue()))
+
+        if(expressionTypeChecker.isLValueViolated || expressionTypeChecker.aloneThis){
             assignmentStmt.addError(new LeftSideNotLvalue(assignmentStmt.getLine()));
+        }
+
+        expressionTypeChecker.isLValueViolated = false;
+        expressionTypeChecker.aloneThis = false;
+
         return null;
     }
 
     @Override
     public Void visit(BlockStmt blockStmt) {
+        if(!(haveBeenPrinted.peek()) && haveBeenUnreached.peek()){
+            blockStmt.addError(new UnreachableStatements(blockStmt));
+            haveBeenPrinted.pop();
+            haveBeenPrinted.push(true);
+        }
+        expressionTypeChecker.isLValueViolated = false;
+        expressionTypeChecker.aloneThis = false;
         for(Statement statement : blockStmt.getStatements())
             statement.accept(this);
         return null;
@@ -221,29 +302,75 @@ public class TypeChecker extends Visitor<Void> {
 
     @Override
     public Void visit(ConditionalStmt conditionalStmt) {
+        if(!(haveBeenPrinted.peek()) && haveBeenUnreached.peek()){
+            conditionalStmt.addError(new UnreachableStatements(conditionalStmt));
+            haveBeenPrinted.pop();
+            haveBeenPrinted.push(true);
+        }
+
+        expressionTypeChecker.isLValueViolated = false;
+        expressionTypeChecker.aloneThis = false;
         Type conditionType = conditionalStmt.getCondition().accept(expressionTypeChecker);
+
+        haveBeenPrinted.push(haveBeenPrinted.peek());
+        haveBeenUnreached.push(haveBeenUnreached.peek());
+
         conditionalStmt.getThenBody().accept(this);
-        if (conditionalStmt.getElseBody() != null)
+
+        haveBeenPrinted.pop();
+        Boolean hasThenBodyUnreachable = haveBeenUnreached.pop();
+
+        Boolean hasElseBodyUnreachable = false;
+
+        if (conditionalStmt.getElseBody() != null) {
+            haveBeenPrinted.push(haveBeenPrinted.peek());
+            haveBeenUnreached.push(haveBeenUnreached.peek());
+
             conditionalStmt.getElseBody().accept(this);
+
+            haveBeenPrinted.pop();
+            hasElseBodyUnreachable = haveBeenUnreached.pop();
+        }
+
         if (!(conditionType instanceof BoolType || conditionType instanceof NoType))
             conditionalStmt.addError(new ConditionNotBool(conditionalStmt.getLine()));
+
+        if(hasThenBodyUnreachable && hasElseBodyUnreachable)
+        {
+            haveBeenUnreached.pop();
+            haveBeenUnreached.push(true);
+            haveBeenPrinted.pop();
+            haveBeenPrinted.push(false);
+        }
+
         return null;
     }
 
     @Override
     public Void visit(MethodCallStmt methodCallStmt) {
+        if(!(haveBeenPrinted.peek()) && haveBeenUnreached.peek()){
+            methodCallStmt.addError(new UnreachableStatements(methodCallStmt));
+            haveBeenPrinted.pop();
+            haveBeenPrinted.push(true);
+        }
+        expressionTypeChecker.isLValueViolated = false;
+        expressionTypeChecker.aloneThis = false;
+        isInMethodCallStmt = true;
         methodCallStmt.getMethodCall().accept(expressionTypeChecker);
+        isInMethodCallStmt = false;
         return null;
     }
 
     @Override
     public Void visit(PrintStmt print) {
-        Type argType = print.getArg().accept(expressionTypeChecker);
-
-        if(argType instanceof NullType && !(print.getArg() instanceof NullValue)) {
-            print.addError(new CantUseValueOfVoidMethod(print.getLine()));
-            argType = new NoType();
+        if(!(haveBeenPrinted.peek()) && haveBeenUnreached.peek()){
+            print.addError(new UnreachableStatements(print));
+            haveBeenPrinted.pop();
+            haveBeenPrinted.push(true);
         }
+        expressionTypeChecker.isLValueViolated = false;
+        expressionTypeChecker.aloneThis = false;
+        Type argType = print.getArg().accept(expressionTypeChecker);
 
         if(!(argType instanceof IntType) && !(argType instanceof StringType) && !(argType instanceof BoolType) && !(argType instanceof NoType))
             print.addError(new UnsupportedTypeForPrint(print.getLine()));
@@ -252,13 +379,21 @@ public class TypeChecker extends Visitor<Void> {
 
     @Override
     public Void visit(ReturnStmt returnStmt) {
+        if(!(haveBeenPrinted.peek()) && haveBeenUnreached.peek()){
+            returnStmt.addError(new UnreachableStatements(returnStmt));
+            haveBeenPrinted.pop();
+            haveBeenPrinted.push(true);
+        }
+        expressionTypeChecker.isLValueViolated = false;
+        expressionTypeChecker.aloneThis = false;
+        hasReturnStmt = true;
+        haveBeenUnreached.pop();
+        haveBeenUnreached.push(true);
+        haveBeenPrinted.pop();
+        haveBeenPrinted.push(false);
         Type returnType;
         if (returnStmt.getReturnedExpr() != null) {
             returnType = returnStmt.getReturnedExpr().accept(expressionTypeChecker);
-            if(returnType instanceof NullType && !(returnStmt.getReturnedExpr() instanceof NullValue)) {
-                returnStmt.addError(new CantUseValueOfVoidMethod(returnStmt.getLine()));
-                returnType = new NoType();
-            }
         }
         else
             returnType = new NullType();
@@ -269,29 +404,61 @@ public class TypeChecker extends Visitor<Void> {
 
     @Override
     public Void visit(BreakStmt breakStmt) {
-        if (!isInLoop)
+        if(!(haveBeenPrinted.peek()) && haveBeenUnreached.peek()) {
+            breakStmt.addError(new UnreachableStatements(breakStmt));
+            haveBeenPrinted.pop();
+            haveBeenPrinted.push(true);
+        }
+
+        if (!isInLoop) {
             breakStmt.addError(new ContinueBreakNotInLoop(breakStmt.getLine(), 0));
+        }
+        else{
+            haveBeenUnreached.pop();
+            haveBeenUnreached.push(true);
+            haveBeenPrinted.pop();
+            haveBeenPrinted.push(false);
+        }
         return null;
     }
 
     @Override
     public Void visit(ContinueStmt continueStmt) {
-        if (!isInLoop)
+        if(!(haveBeenPrinted.peek()) && haveBeenUnreached.peek()){
+            continueStmt.addError(new UnreachableStatements(continueStmt));
+            haveBeenPrinted.pop();
+            haveBeenPrinted.push(true);
+        }
+        if (!isInLoop) {
             continueStmt.addError(new ContinueBreakNotInLoop(continueStmt.getLine(), 1));
+        }
+        else{
+            haveBeenUnreached.pop();
+            haveBeenUnreached.push(true);
+            haveBeenPrinted.pop();
+            haveBeenPrinted.push(false);
+        }
         return null;
     }
 
     @Override
     public Void visit(ForeachStmt foreachStmt) {
+        if(!(haveBeenPrinted.peek()) && haveBeenUnreached.peek()){
+            foreachStmt.addError(new UnreachableStatements(foreachStmt));
+            haveBeenPrinted.pop();
+            haveBeenPrinted.push(true);
+        }
+
+        haveBeenPrinted.push(haveBeenPrinted.peek());
+        haveBeenUnreached.push(haveBeenUnreached.peek());
+
+        expressionTypeChecker.isLValueViolated = false;
+        expressionTypeChecker.aloneThis = false;
+        boolean tempIsInLoop = isInLoop;
         isInLoop = true;
         Type identifierType = foreachStmt.getVariable().accept(expressionTypeChecker);
         Type itType = foreachStmt.getList().accept(expressionTypeChecker);
         foreachStmt.getBody().accept(this);
-
-        if(itType instanceof NullType && !(foreachStmt.getList() instanceof NullValue)) {
-            foreachStmt.addError(new CantUseValueOfVoidMethod(foreachStmt.getLine()));
-            itType = new NoType();
-        }
 
         if(itType instanceof NoType)
             return null;
@@ -308,24 +475,35 @@ public class TypeChecker extends Visitor<Void> {
 
         if(!expressionTypeChecker.checkTypes(identifierType, listItemType, false))
             foreachStmt.addError(new ForeachVarNotMatchList(foreachStmt));
-        //TODO
 
-        isInLoop =false;
+        isInLoop = tempIsInLoop;
+
+        haveBeenPrinted.pop();
+        haveBeenUnreached.pop();
+
         return null;
     }
 
     @Override
     public Void visit(ForStmt forStmt) {
+        if(!(haveBeenPrinted.peek()) && haveBeenUnreached.peek()){
+            forStmt.addError(new UnreachableStatements(forStmt));
+            haveBeenPrinted.pop();
+            haveBeenPrinted.push(true);
+        }
+
+        haveBeenPrinted.push(haveBeenPrinted.peek());
+        haveBeenUnreached.push(haveBeenUnreached.peek());
+
+        expressionTypeChecker.isLValueViolated = false;
+        expressionTypeChecker.aloneThis = false;
+        boolean tempIsInLoop = isInLoop;
         isInLoop = true;
         Type conditionType;
         if (forStmt.getInitialize() != null)
             forStmt.getInitialize().accept(this);
         if (forStmt.getCondition() != null) {
             conditionType = forStmt.getCondition().accept(expressionTypeChecker);
-            if (conditionType instanceof NullType && !(forStmt.getCondition() instanceof NullValue)) {
-                forStmt.addError(new CantUseValueOfVoidMethod(forStmt.getLine()));
-                conditionType = new NoType();
-            }
         }
         else
             conditionType = new BoolType();
@@ -334,7 +512,11 @@ public class TypeChecker extends Visitor<Void> {
         forStmt.getBody().accept(this);
         if (!(conditionType instanceof BoolType || conditionType instanceof NoType))
             forStmt.addError(new ConditionNotBool(forStmt.getLine()));
-        isInLoop = false;
+        isInLoop = tempIsInLoop;
+
+        haveBeenPrinted.pop();
+        haveBeenUnreached.pop();
+
         return null;
     }
 
