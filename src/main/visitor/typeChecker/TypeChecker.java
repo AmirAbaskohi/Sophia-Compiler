@@ -1,5 +1,6 @@
 package main.visitor.typeChecker;
 
+import main.ast.nodes.Node;
 import main.ast.nodes.Program;
 import main.ast.nodes.declaration.classDec.ClassDeclaration;
 import main.ast.nodes.declaration.classDec.classMembersDec.ConstructorDeclaration;
@@ -7,7 +8,6 @@ import main.ast.nodes.declaration.classDec.classMembersDec.FieldDeclaration;
 import main.ast.nodes.declaration.classDec.classMembersDec.MethodDeclaration;
 import main.ast.nodes.declaration.variableDec.VarDeclaration;
 import main.ast.nodes.expression.operators.BinaryOperator;
-import main.ast.nodes.expression.values.NullValue;
 import main.ast.nodes.statement.*;
 import main.ast.nodes.statement.loop.BreakStmt;
 import main.ast.nodes.statement.loop.ContinueStmt;
@@ -17,507 +17,288 @@ import main.ast.types.NoType;
 import main.ast.types.NullType;
 import main.ast.types.Type;
 import main.ast.types.functionPointer.FptrType;
+import main.ast.types.list.ListNameType;
 import main.ast.types.list.ListType;
 import main.ast.types.single.BoolType;
 import main.ast.types.single.ClassType;
 import main.ast.types.single.IntType;
 import main.ast.types.single.StringType;
-import main.compileErrorException.CompileErrorException;
 import main.compileErrorException.typeErrors.*;
-import main.symbolTable.SymbolTable;
-import main.symbolTable.exceptions.ItemNotFoundException;
-import main.symbolTable.items.ClassSymbolTableItem;
-import main.symbolTable.items.MethodSymbolTableItem;
-import main.symbolTable.items.SymbolTableItem;
 import main.symbolTable.utils.graph.Graph;
 import main.visitor.Visitor;
 
 import java.util.ArrayList;
-import java.util.Stack;
 
-public class TypeChecker extends Visitor<Void> {
+public class TypeChecker extends Visitor<RetConBrk> {
     private final Graph<String> classHierarchy;
     private final ExpressionTypeChecker expressionTypeChecker;
-
-    public boolean isInLoop;
-    public Type methodRetType;
-    public boolean hasReturnStmt;
-    public Stack<Boolean> haveBeenPrinted;
-    public Stack<Boolean> haveBeenUnreached;
-
-    static boolean isInMethodCallStmt;
+    private ClassDeclaration currentClass;
+    private MethodDeclaration currentMethod;
+    private boolean isInFor = false;
 
     public TypeChecker(Graph<String> classHierarchy) {
         this.classHierarchy = classHierarchy;
         this.expressionTypeChecker = new ExpressionTypeChecker(classHierarchy);
-        this.isInLoop = false;
-        this.methodRetType = new NoType();
-        this.hasReturnStmt = false;
-        isInMethodCallStmt = false;
-        haveBeenPrinted = new Stack<>();
-        haveBeenUnreached = new Stack<>();
     }
 
     @Override
-    public Void visit(Program program) {
-        String key = ClassSymbolTableItem.START_KEY + "Main";
-        try{
-            SymbolTable.root.getItem(key, true);
-        }catch (ItemNotFoundException ex)
-        {
-            program.addError(new NoMainClass());
-        }
-
-        for (ClassDeclaration classDeclaration: program.getClasses()) {
+    public RetConBrk visit(Program program) {
+        boolean mainCheck = false;
+        for(ClassDeclaration classDeclaration : program.getClasses()) {
+            this.expressionTypeChecker.setCurrentClass(classDeclaration);
+            this.currentClass = classDeclaration;
             classDeclaration.accept(this);
+            if(classDeclaration.getClassName().getName().equals("Main"))
+                mainCheck = true;
+        }
+        if(!mainCheck) {
+            NoMainClass exception = new NoMainClass();
+            program.addError(exception);
         }
         return null;
     }
 
     @Override
-    public Void visit(ClassDeclaration classDeclaration) {
-        expressionTypeChecker.isLValueViolated = false;
-        expressionTypeChecker.aloneThis = false;
-
-        int line = classDeclaration.getLine();
-        String className = classDeclaration.getClassName().getName();
-        String parentClassName = "";
-        if (classDeclaration.getParentClassName() != null)
-            parentClassName = classDeclaration.getParentClassName().getName();
-        String key = ClassSymbolTableItem.START_KEY + className;
-
-        if (className.equals("Main")) {
-            if (classDeclaration.getParentClassName() != null)
-                classDeclaration.addError(new MainClassCantExtend(line));
-            if (classDeclaration.getConstructor() == null)
-                classDeclaration.addError(new NoConstructorInMainClass(classDeclaration));
-        }
-        if (parentClassName.equals("Main")) {
-            classDeclaration.addError(new CannotExtendFromMainClass(line));
-        }
-
-        if (classDeclaration.getParentClassName() != null){
-            try{
-                String parentKey = ClassSymbolTableItem.START_KEY + parentClassName;
-                SymbolTable.root.getItem(parentKey, true);
-            } catch (ItemNotFoundException exp){
-                classDeclaration.addError(new ClassNotDeclared(line, parentClassName));
+    public RetConBrk visit(ClassDeclaration classDeclaration) {
+        if(classDeclaration.getParentClassName() != null) {
+            this.expressionTypeChecker.checkTypeValidation(new ClassType(classDeclaration.getParentClassName()), classDeclaration);
+            if(classDeclaration.getClassName().getName().equals("Main")) {
+                MainClassCantExtend exception = new MainClassCantExtend(classDeclaration.getLine());
+                classDeclaration.addError(exception);
+            }
+            if(classDeclaration.getParentClassName().getName().equals("Main")) {
+                CannotExtendFromMainClass exception = new CannotExtendFromMainClass(classDeclaration.getLine());
+                classDeclaration.addError(exception);
             }
         }
-
-        try {
-            SymbolTableItem symbolTableItem = SymbolTable.root.getItem(key, true);
-            ClassSymbolTableItem classSymbolTableItem = (ClassSymbolTableItem) symbolTableItem;
-            SymbolTable.push(classSymbolTableItem.getClassSymbolTable());
-            ExpressionTypeChecker.className = classDeclaration.getClassName();
-        }
-        catch (ItemNotFoundException ex){
-            System.out.println("Never happening!");
-        }
-
-        for(FieldDeclaration fieldDeclaration : classDeclaration.getFields())
+        for(FieldDeclaration fieldDeclaration : classDeclaration.getFields()) {
             fieldDeclaration.accept(this);
-
-        for(MethodDeclaration methodDeclaration : classDeclaration.getMethods())
-            methodDeclaration.accept(this);
-
-        if(classDeclaration.getConstructor() != null)
+        }
+        if(classDeclaration.getConstructor() != null) {
+            this.expressionTypeChecker.setCurrentMethod(classDeclaration.getConstructor());
+            this.currentMethod = classDeclaration.getConstructor();
             classDeclaration.getConstructor().accept(this);
-
-        SymbolTable.pop();
-        return null;
-    }
-
-    @Override
-    public Void visit(ConstructorDeclaration constructorDeclaration) {
-        haveBeenPrinted.push(false);
-        haveBeenUnreached.push(false);
-        expressionTypeChecker.isLValueViolated = false;
-        expressionTypeChecker.aloneThis = false;
-
-
-        String constructorName = constructorDeclaration.getMethodName().getName();
-
-        if (ExpressionTypeChecker.className.getName().equals("Main"))
-        {
-            if (constructorDeclaration.getArgs().size() != 0)
-                constructorDeclaration.addError(new MainConstructorCantHaveArgs(constructorDeclaration.getLine()));
         }
-
-        String key = MethodSymbolTableItem.START_KEY + constructorName;
-        try {
-            SymbolTableItem symbolTableItem = SymbolTable.top.getItem(key, true);
-            MethodSymbolTableItem methodSymbolTableItem = (MethodSymbolTableItem) symbolTableItem;
-            SymbolTable.push(methodSymbolTableItem.getMethodSymbolTable());
+        else if(classDeclaration.getClassName().getName().equals("Main")) {
+            NoConstructorInMainClass exception = new NoConstructorInMainClass(classDeclaration);
+            classDeclaration.addError(exception);
         }
-        catch (ItemNotFoundException ex){
-            System.out.println("Never happening!");
-        }
-
-        if(!constructorName.equals(ExpressionTypeChecker.className.getName()))
-            constructorDeclaration.addError(new ConstructorNotSameNameAsClass(constructorDeclaration.getLine()));
-
-        for(VarDeclaration varDeclaration : constructorDeclaration.getArgs())
-            varDeclaration.accept(this);
-        for(VarDeclaration varDeclaration : constructorDeclaration.getLocalVars())
-            varDeclaration.accept(this);
-        for(Statement statement : constructorDeclaration.getBody())
-            statement.accept(this);
-        SymbolTable.pop();
-
-        haveBeenPrinted.pop();
-        haveBeenUnreached.pop();
-
-        return null;
-    }
-
-    @Override
-    public Void visit(MethodDeclaration methodDeclaration) {
-
-        haveBeenPrinted.push(false);
-        haveBeenUnreached.push(false);
-
-        expressionTypeChecker.isLValueViolated = false;
-        expressionTypeChecker.aloneThis = false;
-
-        String key = MethodSymbolTableItem.START_KEY + methodDeclaration.getMethodName().getName();
-        try {
-            SymbolTableItem symbolTableItem = SymbolTable.top.getItem(key, true);
-            MethodSymbolTableItem methodSymbolTableItem = (MethodSymbolTableItem) symbolTableItem;
-            SymbolTable.push(methodSymbolTableItem.getMethodSymbolTable());
-        }
-        catch (ItemNotFoundException ex){
-            System.out.println("Never happening!");
-        }
-
-        Type returnType = methodDeclaration.getReturnType();
-        if(returnType instanceof ListType) {
-            ArrayList<CompileErrorException> errors = expressionTypeChecker.checkListDecError((ListType)returnType, methodDeclaration.getLine());
-            for(CompileErrorException error : errors) {
-                methodDeclaration.addError(error);
+        for(MethodDeclaration methodDeclaration : classDeclaration.getMethods()) {
+            this.expressionTypeChecker.setCurrentMethod(methodDeclaration);
+            this.currentMethod = methodDeclaration;
+            boolean doesReturn = methodDeclaration.accept(this).doesReturn;
+            methodDeclaration.setDoesReturn(doesReturn);
+            if(!doesReturn && !(methodDeclaration.getReturnType() instanceof NullType)) {
+                MissingReturnStatement exception = new MissingReturnStatement(methodDeclaration);
+                methodDeclaration.addError(exception);
             }
         }
-        if(returnType instanceof ClassType){
-            if(!expressionTypeChecker.isClassDeclared((ClassType)returnType)) {
-                methodDeclaration.addError(new ClassNotDeclared(methodDeclaration.getLine(), ((ClassType) returnType).getClassName().getName()));
+        return null;
+    }
+
+    @Override
+    public RetConBrk visit(ConstructorDeclaration constructorDeclaration) {
+        if(!this.currentClass.getClassName().getName().equals(constructorDeclaration.getMethodName().getName())) {
+            ConstructorNotSameNameAsClass exception = new ConstructorNotSameNameAsClass(constructorDeclaration.getLine());
+            constructorDeclaration.addError(exception);
+        }
+        if(this.currentClass.getClassName().getName().equals("Main")) {
+            if(constructorDeclaration.getArgs().size() != 0) {
+                MainConstructorCantHaveArgs exception = new MainConstructorCantHaveArgs(constructorDeclaration.getLine());
+                constructorDeclaration.addError(exception);
             }
         }
-        if(returnType instanceof FptrType){
-            ArrayList<CompileErrorException> errors = expressionTypeChecker.checkFptrDecError((FptrType) returnType, methodDeclaration.getLine());
-            for(CompileErrorException error : errors) {
-                methodDeclaration.addError(error);
+        return this.visit((MethodDeclaration) constructorDeclaration);
+    }
+
+    @Override
+    public RetConBrk visit(MethodDeclaration methodDeclaration) {
+        this.expressionTypeChecker.checkTypeValidation(methodDeclaration.getReturnType(), methodDeclaration);
+        for(VarDeclaration varDeclaration : methodDeclaration.getArgs()) {
+            varDeclaration.accept(this);
+        }
+        for(VarDeclaration varDeclaration : methodDeclaration.getLocalVars()) {
+            varDeclaration.accept(this);
+        }
+        boolean doesReturn = false, doesMethodReturn = false;
+        for(Statement statement : methodDeclaration.getBody()) {
+            if(doesReturn) {
+                UnreachableStatements exception = new UnreachableStatements(statement);
+                statement.addError(exception);
             }
+            doesReturn = statement.accept(this).doesReturn;
+            doesMethodReturn = doesReturn || doesMethodReturn;
         }
+        return new RetConBrk(doesMethodReturn, false);
+    }
 
-        methodRetType = methodDeclaration.getReturnType();
-
-        for(VarDeclaration varDeclaration : methodDeclaration.getArgs())
-            varDeclaration.accept(this);
-        for(VarDeclaration varDeclaration : methodDeclaration.getLocalVars())
-            varDeclaration.accept(this);
-        for(Statement statement : methodDeclaration.getBody())
-            statement.accept(this);
-
-        if(!(returnType instanceof NullType) && !hasReturnStmt)
-        {
-            methodDeclaration.addError(new MissingReturnStatement(methodDeclaration));
-            hasReturnStmt = false;
-        }
-        SymbolTable.pop();
-
-        haveBeenPrinted.pop();
-        haveBeenUnreached.pop();
-
+    @Override
+    public RetConBrk visit(FieldDeclaration fieldDeclaration) {
+        fieldDeclaration.getVarDeclaration().accept(this);
         return null;
     }
 
     @Override
-    public Void visit(FieldDeclaration fieldDeclaration) {
-        VarDeclaration varDeclaration = fieldDeclaration.getVarDeclaration();
-        varDeclaration.accept(this);
+    public RetConBrk visit(VarDeclaration varDeclaration) {
+        this.expressionTypeChecker.checkTypeValidation(varDeclaration.getType(), varDeclaration);
         return null;
     }
 
     @Override
-    public Void visit(VarDeclaration varDeclaration) {
-        Type type = varDeclaration.getType();
-        if(type instanceof ListType) {
-            ArrayList<CompileErrorException> errors = expressionTypeChecker.checkListDecError((ListType)type, varDeclaration.getLine());
-            for(CompileErrorException error : errors)
-                varDeclaration.addError(error);
+    public RetConBrk visit(AssignmentStmt assignmentStmt) {
+        Type firstType = assignmentStmt.getlValue().accept(expressionTypeChecker);
+        Type secondType = assignmentStmt.getrValue().accept(expressionTypeChecker);
+        boolean isFirstLvalue = expressionTypeChecker.isLvalue(assignmentStmt.getlValue());
+        if(!isFirstLvalue) {
+            LeftSideNotLvalue exception = new LeftSideNotLvalue(assignmentStmt.getLine());
+            assignmentStmt.addError(exception);
         }
-        if(type instanceof ClassType){
-            if(! expressionTypeChecker.isClassDeclared((ClassType)type))
-                varDeclaration.addError(new ClassNotDeclared(varDeclaration.getLine(), ((ClassType)type).getClassName().getName()));
+        if(firstType instanceof NoType || secondType instanceof NoType) {
+            return new RetConBrk(false, false);
         }
-        if(type instanceof FptrType){
-            ArrayList<CompileErrorException> errors = expressionTypeChecker.checkFptrDecError((FptrType) type, varDeclaration.getLine());
-            for(CompileErrorException error : errors)
-                varDeclaration.addError(error);
+        boolean isSubtype = expressionTypeChecker.isFirstSubTypeOfSecond(secondType, firstType);
+        if(!isSubtype) {
+            UnsupportedOperandType exception = new UnsupportedOperandType(assignmentStmt.getLine(), BinaryOperator.assign.name());
+            assignmentStmt.addError(exception);
+            return new RetConBrk(false, false);
         }
-        return null;
+        return new RetConBrk(false, false);
     }
 
     @Override
-    public Void visit(AssignmentStmt assignmentStmt) {
-        if(!(haveBeenPrinted.peek()) && haveBeenUnreached.peek()){
-            assignmentStmt.addError(new UnreachableStatements(assignmentStmt));
-            haveBeenPrinted.pop();
-            haveBeenPrinted.push(true);
+    public RetConBrk visit(BlockStmt blockStmt) {
+        boolean doesReturn = false, doesBlockReturn = false;
+        boolean doesContinueBreak = false, doesBlockContinueBreak = false;
+        for(Statement statement : blockStmt.getStatements()) {
+            if(doesReturn) {
+                UnreachableStatements exception = new UnreachableStatements(statement);
+                statement.addError(exception);
+            }
+            if(isInFor && doesContinueBreak) {
+                UnreachableStatements exception = new UnreachableStatements(statement);
+                statement.addError(exception);
+            }
+            RetConBrk stmtRetConBrk = statement.accept(this);
+            doesReturn = stmtRetConBrk.doesReturn;
+            doesBlockReturn = doesReturn || doesBlockReturn;
+            doesContinueBreak = stmtRetConBrk.doesBreakContinue;
+            doesBlockContinueBreak = doesContinueBreak || doesBlockContinueBreak;
         }
-        expressionTypeChecker.isLValueViolated = false;
-        expressionTypeChecker.aloneThis = false;
-
-        Type rType = assignmentStmt.getrValue().accept(expressionTypeChecker);
-        expressionTypeChecker.isLValueViolated = false;
-        expressionTypeChecker.aloneThis = false;
-        Type lType = assignmentStmt.getlValue().accept(expressionTypeChecker);
-
-        if(!expressionTypeChecker.checkTypes(rType, lType, true))
-            assignmentStmt.addError(new UnsupportedOperandType(assignmentStmt.getLine(), BinaryOperator.assign.name()));
-
-        if(expressionTypeChecker.isLValueViolated || expressionTypeChecker.aloneThis){
-            assignmentStmt.addError(new LeftSideNotLvalue(assignmentStmt.getLine()));
-        }
-
-        expressionTypeChecker.isLValueViolated = false;
-        expressionTypeChecker.aloneThis = false;
-
-        return null;
+        return new RetConBrk(doesBlockReturn, doesBlockContinueBreak);
     }
 
     @Override
-    public Void visit(BlockStmt blockStmt) {
-        if(!(haveBeenPrinted.peek()) && haveBeenUnreached.peek()){
-            blockStmt.addError(new UnreachableStatements(blockStmt));
-            haveBeenPrinted.pop();
-            haveBeenPrinted.push(true);
+    public RetConBrk visit(ConditionalStmt conditionalStmt) {
+        Type condType = conditionalStmt.getCondition().accept(expressionTypeChecker);
+        if(!(condType instanceof BoolType || condType instanceof NoType)) {
+            ConditionNotBool exception = new ConditionNotBool(conditionalStmt.getLine());
+            conditionalStmt.addError(exception);
         }
-        expressionTypeChecker.isLValueViolated = false;
-        expressionTypeChecker.aloneThis = false;
-        for(Statement statement : blockStmt.getStatements())
-            statement.accept(this);
-        return null;
+        RetConBrk thenRetConBrk = conditionalStmt.getThenBody().accept(this);
+        if(conditionalStmt.getElseBody() != null) {
+            RetConBrk elseRetConBrk = conditionalStmt.getElseBody().accept(this);
+            return new RetConBrk(thenRetConBrk.doesReturn && elseRetConBrk.doesReturn,
+                    thenRetConBrk.doesBreakContinue && elseRetConBrk.doesBreakContinue);
+        }
+        return new RetConBrk(false, false);
     }
 
     @Override
-    public Void visit(ConditionalStmt conditionalStmt) {
-        if(!(haveBeenPrinted.peek()) && haveBeenUnreached.peek()){
-            conditionalStmt.addError(new UnreachableStatements(conditionalStmt));
-            haveBeenPrinted.pop();
-            haveBeenPrinted.push(true);
-        }
-
-        expressionTypeChecker.isLValueViolated = false;
-        expressionTypeChecker.aloneThis = false;
-        Type conditionType = conditionalStmt.getCondition().accept(expressionTypeChecker);
-
-        haveBeenPrinted.push(haveBeenPrinted.peek());
-        haveBeenUnreached.push(haveBeenUnreached.peek());
-
-        conditionalStmt.getThenBody().accept(this);
-
-        haveBeenPrinted.pop();
-        Boolean hasThenBodyUnreachable = haveBeenUnreached.pop();
-
-        Boolean hasElseBodyUnreachable = false;
-
-        if (conditionalStmt.getElseBody() != null) {
-            haveBeenPrinted.push(haveBeenPrinted.peek());
-            haveBeenUnreached.push(haveBeenUnreached.peek());
-
-            conditionalStmt.getElseBody().accept(this);
-
-            haveBeenPrinted.pop();
-            hasElseBodyUnreachable = haveBeenUnreached.pop();
-        }
-
-        if (!(conditionType instanceof BoolType || conditionType instanceof NoType))
-            conditionalStmt.addError(new ConditionNotBool(conditionalStmt.getLine()));
-
-        if(hasThenBodyUnreachable && hasElseBodyUnreachable)
-        {
-            haveBeenUnreached.pop();
-            haveBeenUnreached.push(true);
-            haveBeenPrinted.pop();
-            haveBeenPrinted.push(false);
-        }
-
-        return null;
-    }
-
-    @Override
-    public Void visit(MethodCallStmt methodCallStmt) {
-        if(!(haveBeenPrinted.peek()) && haveBeenUnreached.peek()){
-            methodCallStmt.addError(new UnreachableStatements(methodCallStmt));
-            haveBeenPrinted.pop();
-            haveBeenPrinted.push(true);
-        }
-        expressionTypeChecker.isLValueViolated = false;
-        expressionTypeChecker.aloneThis = false;
-        isInMethodCallStmt = true;
+    public RetConBrk visit(MethodCallStmt methodCallStmt) {
+        expressionTypeChecker.setIsInMethodCallStmt(true);
         methodCallStmt.getMethodCall().accept(expressionTypeChecker);
-        isInMethodCallStmt = false;
-        return null;
+        expressionTypeChecker.setIsInMethodCallStmt(false);
+        return new RetConBrk(false, false);
     }
 
     @Override
-    public Void visit(PrintStmt print) {
-        if(!(haveBeenPrinted.peek()) && haveBeenUnreached.peek()){
-            print.addError(new UnreachableStatements(print));
-            haveBeenPrinted.pop();
-            haveBeenPrinted.push(true);
-        }
-        expressionTypeChecker.isLValueViolated = false;
-        expressionTypeChecker.aloneThis = false;
+    public RetConBrk visit(PrintStmt print) {
         Type argType = print.getArg().accept(expressionTypeChecker);
-
-        if(!(argType instanceof IntType) && !(argType instanceof StringType) && !(argType instanceof BoolType) && !(argType instanceof NoType))
-            print.addError(new UnsupportedTypeForPrint(print.getLine()));
-        return null;
+        if(!(argType instanceof IntType || argType instanceof StringType ||
+                argType instanceof BoolType || argType instanceof NoType)) {
+            UnsupportedTypeForPrint exception = new UnsupportedTypeForPrint(print.getLine());
+            print.addError(exception);
+        }
+        return new RetConBrk(false, false);
     }
 
     @Override
-    public Void visit(ReturnStmt returnStmt) {
-        if(!(haveBeenPrinted.peek()) && haveBeenUnreached.peek()){
-            returnStmt.addError(new UnreachableStatements(returnStmt));
-            haveBeenPrinted.pop();
-            haveBeenPrinted.push(true);
+    public RetConBrk visit(ReturnStmt returnStmt) {
+        Type retType = returnStmt.getReturnedExpr().accept(expressionTypeChecker);
+        Type actualRetType = this.currentMethod.getReturnType();
+        if(!expressionTypeChecker.isFirstSubTypeOfSecond(retType, actualRetType)) {
+            ReturnValueNotMatchMethodReturnType exception = new ReturnValueNotMatchMethodReturnType(returnStmt);
+            returnStmt.addError(exception);
         }
-        expressionTypeChecker.isLValueViolated = false;
-        expressionTypeChecker.aloneThis = false;
-        hasReturnStmt = true;
-        haveBeenUnreached.pop();
-        haveBeenUnreached.push(true);
-        haveBeenPrinted.pop();
-        haveBeenPrinted.push(false);
-        Type returnType;
-        if (returnStmt.getReturnedExpr() != null) {
-            returnType = returnStmt.getReturnedExpr().accept(expressionTypeChecker);
-        }
-        else
-            returnType = new NullType();
-        if (! expressionTypeChecker.checkTypes(returnType, methodRetType, true))
-            returnStmt.addError(new ReturnValueNotMatchMethodReturnType(returnStmt));
-        return null;
+        return new RetConBrk(true, false);
     }
 
     @Override
-    public Void visit(BreakStmt breakStmt) {
-        if(!(haveBeenPrinted.peek()) && haveBeenUnreached.peek()) {
-            breakStmt.addError(new UnreachableStatements(breakStmt));
-            haveBeenPrinted.pop();
-            haveBeenPrinted.push(true);
+    public RetConBrk visit(BreakStmt breakStmt) {
+        if(!isInFor) {
+            ContinueBreakNotInLoop exception = new ContinueBreakNotInLoop(breakStmt.getLine(), 0);
+            breakStmt.addError(exception);
         }
-
-        if (!isInLoop) {
-            breakStmt.addError(new ContinueBreakNotInLoop(breakStmt.getLine(), 0));
-        }
-        else{
-            haveBeenUnreached.pop();
-            haveBeenUnreached.push(true);
-            haveBeenPrinted.pop();
-            haveBeenPrinted.push(false);
-        }
-        return null;
+        return new RetConBrk(false, true);
     }
 
     @Override
-    public Void visit(ContinueStmt continueStmt) {
-        if(!(haveBeenPrinted.peek()) && haveBeenUnreached.peek()){
-            continueStmt.addError(new UnreachableStatements(continueStmt));
-            haveBeenPrinted.pop();
-            haveBeenPrinted.push(true);
+    public RetConBrk visit(ContinueStmt continueStmt) {
+        if(!isInFor) {
+            ContinueBreakNotInLoop exception = new ContinueBreakNotInLoop(continueStmt.getLine(), 1);
+            continueStmt.addError(exception);
         }
-        if (!isInLoop) {
-            continueStmt.addError(new ContinueBreakNotInLoop(continueStmt.getLine(), 1));
-        }
-        else{
-            haveBeenUnreached.pop();
-            haveBeenUnreached.push(true);
-            haveBeenPrinted.pop();
-            haveBeenPrinted.push(false);
-        }
-        return null;
+        return new RetConBrk(false, true);
     }
 
     @Override
-    public Void visit(ForeachStmt foreachStmt) {
-        if(!(haveBeenPrinted.peek()) && haveBeenUnreached.peek()){
-            foreachStmt.addError(new UnreachableStatements(foreachStmt));
-            haveBeenPrinted.pop();
-            haveBeenPrinted.push(true);
+    public RetConBrk visit(ForeachStmt foreachStmt) {
+        Type varType = foreachStmt.getVariable().accept(expressionTypeChecker);
+        Type listType = foreachStmt.getList().accept(expressionTypeChecker);
+        if(!(listType instanceof ListType || listType instanceof NoType)) {
+            ForeachCantIterateNoneList exception = new ForeachCantIterateNoneList(foreachStmt.getLine());
+            foreachStmt.addError(exception);
         }
-
-        haveBeenPrinted.push(haveBeenPrinted.peek());
-        haveBeenUnreached.push(haveBeenUnreached.peek());
-
-        expressionTypeChecker.isLValueViolated = false;
-        expressionTypeChecker.aloneThis = false;
-        boolean tempIsInLoop = isInLoop;
-        isInLoop = true;
-        Type identifierType = foreachStmt.getVariable().accept(expressionTypeChecker);
-        Type itType = foreachStmt.getList().accept(expressionTypeChecker);
+        else if(!(listType instanceof NoType)) {
+            ArrayList<Type> types = new ArrayList<>();
+            for(ListNameType listNameType : ((ListType) listType).getElementsTypes())
+                types.add(listNameType.getType());
+            if(!expressionTypeChecker.areAllSameType(types)) {
+                ForeachListElementsNotSameType exception = new ForeachListElementsNotSameType(foreachStmt.getLine());
+                foreachStmt.addError(exception);
+            }
+            if((types.size() > 0) && !expressionTypeChecker.isSameType(varType, types.get(0))) {
+                ForeachVarNotMatchList exception = new ForeachVarNotMatchList(foreachStmt);
+                foreachStmt.addError(exception);
+            }
+        }
+        boolean lastIsInFor = this.isInFor;
+        this.isInFor = true;
         foreachStmt.getBody().accept(this);
-
-        if(itType instanceof NoType)
-            return null;
-        if(!(itType instanceof ListType))
-        {
-            foreachStmt.addError(new ForeachCantIterateNoneList(foreachStmt.getLine()));
-            isInLoop =false;
-            return null;
-        }
-        Type listItemType;
-        if(! expressionTypeChecker.listHasSameType((ListType)itType))
-            foreachStmt.addError(new ForeachListElementsNotSameType(foreachStmt.getLine()));
-        listItemType = ((ListType) itType).getElementsTypes().get(0).getType();
-
-        if(!expressionTypeChecker.checkTypes(identifierType, listItemType, false))
-            foreachStmt.addError(new ForeachVarNotMatchList(foreachStmt));
-
-        isInLoop = tempIsInLoop;
-
-        haveBeenPrinted.pop();
-        haveBeenUnreached.pop();
-
-        return null;
+        this.isInFor = lastIsInFor;
+        return new RetConBrk(false, false);
     }
 
     @Override
-    public Void visit(ForStmt forStmt) {
-        if(!(haveBeenPrinted.peek()) && haveBeenUnreached.peek()){
-            forStmt.addError(new UnreachableStatements(forStmt));
-            haveBeenPrinted.pop();
-            haveBeenPrinted.push(true);
-        }
-
-        haveBeenPrinted.push(haveBeenPrinted.peek());
-        haveBeenUnreached.push(haveBeenUnreached.peek());
-
-        expressionTypeChecker.isLValueViolated = false;
-        expressionTypeChecker.aloneThis = false;
-        boolean tempIsInLoop = isInLoop;
-        isInLoop = true;
-        Type conditionType;
-        if (forStmt.getInitialize() != null)
+    public RetConBrk visit(ForStmt forStmt) {
+        if(forStmt.getInitialize() != null) {
             forStmt.getInitialize().accept(this);
-        if (forStmt.getCondition() != null) {
-            conditionType = forStmt.getCondition().accept(expressionTypeChecker);
         }
-        else
-            conditionType = new BoolType();
-        if (forStmt.getUpdate() != null)
+        if(forStmt.getCondition() != null) {
+            Type type = forStmt.getCondition().accept(expressionTypeChecker);
+            if(!(type instanceof BoolType || type instanceof NoType)) {
+                ConditionNotBool exception = new ConditionNotBool(forStmt.getLine());
+                forStmt.addError(exception);
+            }
+        }
+        if(forStmt.getUpdate() != null) {
             forStmt.getUpdate().accept(this);
+        }
+        boolean lastIsInFor = this.isInFor;
+        this.isInFor = true;
         forStmt.getBody().accept(this);
-        if (!(conditionType instanceof BoolType || conditionType instanceof NoType))
-            forStmt.addError(new ConditionNotBool(forStmt.getLine()));
-        isInLoop = tempIsInLoop;
-
-        haveBeenPrinted.pop();
-        haveBeenUnreached.pop();
-
-        return null;
+        this.isInFor = lastIsInFor;
+        return new RetConBrk(false, false);
     }
 
 }

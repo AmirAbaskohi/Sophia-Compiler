@@ -397,7 +397,7 @@ expression returns[Expression exprRet]:
     (a=ASSIGN e=expression
     {
         BinaryOperator op = BinaryOperator.assign;
-        $exprRet = new BinaryExpression($oe.orExprRet, $e.MxprRet, op);
+        $exprRet = new BinaryExpression($oe.orExprRet, $e.exprRet, op);
         $exprRet.setLine($a.getLine());
     }
     )?

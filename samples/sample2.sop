@@ -1,45 +1,77 @@
-class A extends L {
-    a:int;
-    b:func<list(0 # int), bool->void>;
+class WordProcessor
+{
+	def list(mylist: list(100 # list(key:string, value:int)),length: int) map(processinglist : list(100 # string)) {
+		//count the same number of names in the list
+		name : string;
+		size : int ;
+		found : bool;
+		result : list(100 # list(key:string, value:int)) ;
+		i : int;
 
-    def A2(m:list(int, list(a:int, a:bool)), r:string) {
-        t: int;
-        b: bool;
-        f: func<void->string>;
+		size = 0;
+		foreach ( name in processinglist)
+		{
+			found = false;
+			for(i=0; i<size; i = i + 1)
+			{
+				if (result[i].key == name)
+				{
+					result[i].value = result[i].value + 1;
+					found = true;
+				}
 
-        a = this.a.b + a - r * m[1].a;
-        print(m + this.a);
-        this.foo.a = 2;
-        t = (this.foo())++;
-        return;
-        print("Unreachable statements 1");
-        this.bar() = t - this;
-        for(t = 0 = 1; t % 2; t = !(t--)) {
-            if(b && !b) {
-                break;
-            }
-            else {
-                continue;
-            }
-            print("Unreachable statement 2");
-        }
-        t = new L();
-        f = this.foo;
-        if(f != null) {
-            t = f();
-            t = f.b;
-        }
-    }
+		    }
+		   if (!found) {
+			 	result[size].key = name;
+				result[size].value = 1;
+				size = size + 1;
+			}
 
-    def string foo() {
+		}
+		return [result,size];
+	}
+	def int reduce(input    : list(mylist: list(100 # list(key:string, value:int)),length: int),
+	               operator : func<int,int->int>)
+	{
+		name : string;
+		result : int ;
+		i : int;
 
-    }
+		result = 0;
+		for (i=0;i<input.length;i = i + 1)
+		{
+			result = operator(result,input.mylist[i].value);
+		}
+		return result;
+	}
+	def int add(opr1:int,opr2:int)
+	{
+		return opr1+opr2;
+	}
+	def int mul(opr1:int,opr2:int)
+	{
+		return opr1*opr2;
+	}
 
-    def void bar(a:int) {
-
-    }
+	def void wordProcess(stlist : list(100 # string))
+	{
+		print("the total number of names: ");
+		print(this.reduce(this.map(stlist),this.add));
+	}
 }
 
-class B {
-
+class Main{
+    def Main() {
+        wordProcessor : WordProcessor;
+        myList : list(100 # string);
+        i : int;
+        wordProcessor = new WordProcessor();
+        for(i = 0; i < 50; i = i + 1) {
+            myList[i] = "amir";
+        }
+        for(i = 50; i < 100; i = i + 1) {
+            myList[i] = "ali";
+        }
+        wordProcessor.wordProcess(myList);
+    }
 }
