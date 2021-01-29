@@ -199,3 +199,6 @@ print("Hello World!");
     * Type checking
     * Checking base rules such as `Main` class conditions
     * Checking accessibilities
+
+* Phase4:
+    * Code generation using `Jasmin`
